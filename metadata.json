@@ -1,0 +1,7 @@
+{
+  "name": "AI Ward Round Assistant",
+  "description": "AI-powered clinical ward round assistant for doctors to review patient updates, extract medical records, analyze investigation trends, and manage daily rounds.",
+  "requestFramePermissions": ["camera"],
+  "targetPlatforms": ["web"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
