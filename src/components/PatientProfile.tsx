@@ -273,50 +273,50 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   const isAction = patient.priority === 'ACTION';
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto text-slate-900">
+    <div className="p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto text-slate-900">
       {/* Back Button & Top Navigation */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         <button
           onClick={onBack}
-          className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl transition-colors shadow-2xs"
+          className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-3.5 py-2.5 min-h-[38px] rounded-xl transition-colors shadow-2xs cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Back to Patients</span>
+          <span>Back to Ward Patients</span>
         </button>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid grid-cols-3 sm:flex items-center gap-2">
           <button
             onClick={() => onOpenAddRoundNote(patient)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-xs transition-all"
+            className="flex items-center justify-center gap-1 bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap"
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Round Note</span>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span>Round Note</span>
           </button>
 
           <button
             onClick={onOpenCapture}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-medium px-3.5 py-2 rounded-xl text-xs transition-colors shadow-2xs"
+            className="flex items-center justify-center gap-1 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
           >
-            <Camera className="w-4 h-4" />
+            <Camera className="w-4 h-4 shrink-0" />
             <span>Capture Doc</span>
           </button>
 
           {patient.status !== 'DISCHARGED' ? (
             <button
               onClick={() => onOpenDischargeModal && onOpenDischargeModal(patient)}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-2xs"
+              className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
               title="Discharge patient and store complete medical records"
             >
-              <LogOut className="w-4 h-4 text-red-600" />
+              <LogOut className="w-4 h-4 text-red-600 shrink-0" />
               <span>Discharge</span>
             </button>
           ) : (
             onReadmitPatient && (
               <button
                 onClick={() => onReadmitPatient(patient.patientId)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-teal-800 hover:bg-teal-900 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-all shadow-xs"
+                className="flex items-center justify-center gap-1 bg-teal-800 hover:bg-teal-900 text-white font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-all shadow-xs cursor-pointer whitespace-nowrap"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 <span>Re-Admit</span>
               </button>
             )

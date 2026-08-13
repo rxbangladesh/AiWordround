@@ -224,7 +224,7 @@ export const CaptureUpload: React.FC<CaptureUploadProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto text-slate-900">
+    <div className="p-4 sm:p-6 space-y-6 max-w-[1600px] mx-auto text-slate-900">
       {/* Top Banner */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-md text-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>

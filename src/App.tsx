@@ -1,6 +1,6 @@
 import React from 'react';
 import { INITIAL_PATIENTS } from './data/mockPatients';
-import { Patient, PriorityLevel, DailyRound, DocumentType, ExtractedField, InvestigationResult, TaskCategory, DischargeData } from './types';
+import { Patient, PriorityLevel, DailyRound, DocumentType, ExtractedField, InvestigationResult, TaskCategory, DischargeData, UserAccount } from './types';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -14,10 +14,19 @@ import { SettingsView } from './components/SettingsView';
 import { DailyRoundModal } from './components/DailyRoundModal';
 import { NewPatientModal } from './components/NewPatientModal';
 import { DischargeModal } from './components/DischargeModal';
+import { LoginScreen } from './components/LoginScreen';
+import { ScreenLockModal } from './components/ScreenLockModal';
+import { getStoredCurrentUser, saveStoredCurrentUser, DEFAULT_USERS } from './utils/auth';
 
 const LOCAL_STORAGE_KEY = 'ward_round_patients_v3';
 
 export const App: React.FC = () => {
+  // Authentication & Session State
+  const [currentUser, setCurrentUser] = React.useState<UserAccount | null>(() => {
+    return getStoredCurrentUser() || DEFAULT_USERS[0];
+  });
+  const [isSessionLocked, setIsSessionLocked] = React.useState(false);
+
   const [patients, setPatients] = React.useState<Patient[]>(() => {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -43,6 +52,20 @@ export const App: React.FC = () => {
   const [dailyRoundModalPatient, setDailyRoundModalPatient] = React.useState<Patient | null>(null);
   const [newPatientModalOpen, setNewPatientModalOpen] = React.useState(false);
   const [dischargeModalPatient, setDischargeModalPatient] = React.useState<Patient | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
+  // Handle Login & Logout
+  const handleLoginSuccess = (user: UserAccount) => {
+    setCurrentUser(user);
+    saveStoredCurrentUser(user);
+    setIsSessionLocked(false);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    saveStoredCurrentUser(null);
+    setIsSessionLocked(false);
+  };
 
   // Sync state to localStorage whenever patients update
   React.useEffect(() => {
@@ -404,20 +427,32 @@ export const App: React.FC = () => {
     );
   };
 
+  // If not authenticated, display full-screen clinical login
+  if (!currentUser) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      {/* Top Navbar */}
-      <Navbar
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        selectedWard={selectedWard}
-        onWardChange={setSelectedWard}
-        patients={patients}
-        onSelectPatient={handleSelectPatient}
-        onOpenNewPatient={() => setNewPatientModalOpen(true)}
-        onOpenRoundMode={() => setRoundModeOpen(true)}
-        onOpenCapture={() => setActiveView('capture')}
-      />
+    <div className="h-screen w-full bg-slate-950 flex items-center justify-center overflow-hidden font-sans">
+      <div className="w-full max-w-[1600px] h-full lg:max-h-[900px] lg:aspect-[16/9] bg-slate-50 text-slate-900 flex flex-col overflow-hidden shadow-2xl relative lg:rounded-2xl lg:border lg:border-slate-800">
+        {/* Top Navbar (Sticky on all screens) */}
+        <Navbar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedWard={selectedWard}
+          onWardChange={setSelectedWard}
+          patients={patients}
+          onSelectPatient={handleSelectPatient}
+          onOpenNewPatient={() => setNewPatientModalOpen(true)}
+          onOpenRoundMode={() => setRoundModeOpen(true)}
+          onOpenCapture={() => setActiveView('capture')}
+          currentUser={currentUser}
+          onLockSession={() => setIsSessionLocked(true)}
+          onLogout={handleLogout}
+          onOpenSettings={() => setActiveView('settings')}
+          mobileMenuOpen={mobileMenuOpen}
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
+        />
 
       {/* Main Layout Body */}
       <div className="flex-1 flex overflow-hidden">
@@ -429,6 +464,12 @@ export const App: React.FC = () => {
           criticalCount={patients.filter((p) => p.priority === 'CRITICAL').length}
           pendingTasksCount={patients.reduce((acc, p) => acc + (p.tasks ? p.tasks.filter((t) => t.status === 'PENDING').length : 0), 0)}
           onOpenRoundMode={() => setRoundModeOpen(true)}
+          mobileMenuOpen={mobileMenuOpen}
+          onCloseMobileMenu={() => setMobileMenuOpen(false)}
+          currentUser={currentUser}
+          onLockSession={() => setIsSessionLocked(true)}
+          onLogout={handleLogout}
+          onOpenSettings={() => setActiveView('settings')}
         />
 
         {/* Content Area */}
@@ -495,9 +536,23 @@ export const App: React.FC = () => {
             />
           )}
 
-          {activeView === 'settings' && <SettingsView />}
+          {activeView === 'settings' && (
+            <SettingsView
+              currentUser={currentUser}
+              onLogout={handleLogout}
+            />
+          )}
         </main>
       </div>
+
+      {/* BED-SIDE SCREEN LOCK OVERLAY */}
+      {isSessionLocked && (
+        <ScreenLockModal
+          currentUser={currentUser}
+          onUnlock={() => setIsSessionLocked(false)}
+          onLogout={handleLogout}
+        />
+      )}
 
       {/* OVERLAYS & MODALS */}
       {roundModeOpen && (
@@ -535,6 +590,7 @@ export const App: React.FC = () => {
           onConfirmDischarge={handleConfirmDischarge}
         />
       )}
+      </div>
     </div>
   );
 };

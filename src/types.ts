@@ -171,3 +171,18 @@ export interface PreRoundBriefSummary {
   todayPlan: string;
   aiInsightAlert?: string;
 }
+
+export type UserRole = 'ATTENDING_PHYSICIAN' | 'RESIDENT_DOCTOR' | 'WARD_NURSE' | 'CLINICAL_ADMIN';
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: UserRole;
+  roleTitle: string; // e.g. "Attending Physician"
+  department: string;
+  licenseNumber?: string;
+  pin?: string; // 4-digit quick lock PIN
+  avatarColor?: string;
+}

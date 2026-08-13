@@ -86,12 +86,12 @@ TODAY'S PLAN: ${p.todayPlan}`;
   };
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto text-slate-900">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-[1600px] mx-auto text-slate-900">
       {/* Header Banner */}
       <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-2xl shadow-md text-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 whitespace-nowrap">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               Pre-Round Ward Executive Brief
             </span>
@@ -99,19 +99,19 @@ TODAY'S PLAN: ${p.todayPlan}`;
               {patients.length} Ward Patients Reviewed
             </span>
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white mt-1">
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
             Pre-Round Clinical Brief
           </h2>
-          <p className="text-xs text-slate-300 mt-1">
+          <p className="text-xs text-slate-300 mt-1 leading-relaxed">
             Prioritized by clinical severity. Deteriorations, worsening lab trends, and pending acute actions listed first.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto shrink-0">
           <button
             onClick={generateBrief}
             disabled={isGenerating}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/40 px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/40 px-4 py-2.5 min-h-[40px] rounded-xl font-bold text-xs shadow-xs transition-all whitespace-nowrap cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
             <span>{isGenerating ? 'Analyzing Ward...' : 'START / REFRESH BRIEF'}</span>
@@ -119,7 +119,7 @@ TODAY'S PLAN: ${p.todayPlan}`;
 
           <button
             onClick={onOpenRoundMode}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-xs transition-all hover:brightness-110"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold px-4 py-2.5 min-h-[40px] rounded-xl text-xs shadow-xs transition-all hover:brightness-110 whitespace-nowrap cursor-pointer"
           >
             <Zap className="w-4 h-4 fill-slate-950" />
             <span>ENTER ROUND MODE</span>
@@ -153,59 +153,71 @@ TODAY'S PLAN: ${p.todayPlan}`;
                   : 'border-slate-200 hover:border-slate-300'
               }`}
             >
-              {/* Patient Title Bar */}
-              <div className={`p-4 flex flex-wrap items-center justify-between gap-3 border-b ${
+              {/* Patient Title Bar: 2-column layout */}
+              <div className={`p-3.5 sm:p-4 flex items-start justify-between gap-3 border-b ${
                 isCritical ? 'bg-red-50/80 border-red-200' :
                 isAction ? 'bg-amber-50/80 border-amber-200' :
                 'bg-slate-100/80 border-slate-200'
               }`}>
-                <div className="flex items-center gap-3">
-                  <span className="px-2.5 py-1 bg-white border border-slate-300 font-mono font-black text-sm text-teal-800 rounded-md">
-                    #{index + 1} • {patient.bed}
-                  </span>
-                  <div>
-                    <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                      <span>{patient.name}</span>
-                      <span className="text-xs text-slate-500 font-normal">({patient.age}{patient.sex[0]})</span>
-                    </h3>
-                    <span className="text-xs text-slate-500 font-mono">
-                      ID: {patient.patientId} | Ward: {patient.ward}
+                {/* Left Column: Patient Name & ID */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono text-xs font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                      #{index + 1}
                     </span>
+                    <h3 className="font-bold text-base sm:text-lg text-slate-900 truncate">
+                      {patient.name}
+                    </h3>
+                    <span className="text-xs text-slate-500 font-semibold shrink-0">({patient.age}{patient.sex[0]})</span>
+                  </div>
+                  <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="font-semibold text-slate-600">ID: {patient.patientId}</span>
+                    <span>•</span>
+                    <span>Ward: {patient.ward.split('-')[0]}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                    isCritical ? 'bg-red-100 text-red-800 border-red-300 animate-pulse' :
-                    isAction ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                    patient.priority === 'REVIEW' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                    'bg-emerald-100 text-emerald-800 border-emerald-300'
-                  }`}>
-                    {patient.priority}
-                  </span>
+                {/* Right Column: Bed Number & Clinical Condition */}
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-0.5 bg-white border border-slate-300 font-mono font-black text-xs text-teal-900 rounded-lg shadow-2xs">
+                      {patient.bed}
+                    </span>
 
-                  <button
-                    onClick={() => copyPatientSummary(patient)}
-                    className="p-1.5 text-xs text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
-                    title="Copy Patient Summary to Clipboard"
-                  >
-                    {copiedId === patient.patientId ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-[10px] text-emerald-700 font-bold">Copied</span>
-                      </>
-                    ) : (
-                      <span className="text-[10px] font-semibold">Copy Brief</span>
-                    )}
-                  </button>
+                    <span className={`px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold border whitespace-nowrap ${
+                      isCritical ? 'bg-red-100 text-red-800 border-red-300 animate-pulse' :
+                      isAction ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                      patient.priority === 'REVIEW' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                      'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    }`}>
+                      {patient.priority}
+                    </span>
+                  </div>
 
-                  <button
-                    onClick={() => onSelectPatient(patient)}
-                    className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
-                  >
-                    <span>Full Profile</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => copyPatientSummary(patient)}
+                      className="p-1.5 text-xs text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                      title="Copy Patient Summary to Clipboard"
+                    >
+                      {copiedId === patient.patientId ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-[10px] text-emerald-700 font-bold whitespace-nowrap">Copied</span>
+                        </>
+                      ) : (
+                        <span className="text-[10px] font-semibold whitespace-nowrap">Copy Brief</span>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => onSelectPatient(patient)}
+                      className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-0.5 shadow-2xs whitespace-nowrap"
+                    >
+                      <span>Profile</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
