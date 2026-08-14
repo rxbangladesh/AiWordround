@@ -9,7 +9,8 @@ export const INITIAL_PATIENTS: Patient[] = [
     bed: 'Bed 04',
     ward: 'Ward 3B - Nephrology/Internal Med',
     admissionDate: '2026-08-08',
-    consultant: 'Dr. Sarah Jenkins, MD',
+    consultant: 'Dr. Alex Rivera, MD',
+    assignedDoctorId: 'usr-1',
     primaryDiagnosis: 'Acute Kidney Injury on Chronic Kidney Disease',
     activeProblems: [
       'Worsening Serum Creatinine (2.1 mg/dL ↑)',
@@ -143,7 +144,8 @@ export const INITIAL_PATIENTS: Patient[] = [
     bed: 'Bed 09',
     ward: 'Ward 2A - Gastroenterology',
     admissionDate: '2026-08-10',
-    consultant: 'Dr. Michael Chang, MD',
+    consultant: 'Dr. Alex Rivera, MD',
+    assignedDoctorId: 'usr-1',
     primaryDiagnosis: 'Lower Gastrointestinal Bleed / Suspected Colonic Diverticulosis',
     activeProblems: [
       'Significant Hemoglobin drop (10.4 → 8.8 → 7.6 g/dL ↓)',
@@ -211,7 +213,8 @@ export const INITIAL_PATIENTS: Patient[] = [
     bed: 'Bed 02',
     ward: 'Ward 1B - Respiratory Med',
     admissionDate: '2026-08-11',
-    consultant: 'Dr. Aris Thorne, MD',
+    consultant: 'Dr. Sarah Jenkins, MD',
+    assignedDoctorId: 'usr-2',
     primaryDiagnosis: 'Right Middle Lobe Community-Acquired Pneumonia',
     activeProblems: [
       'Persistent fever spikes (38.8°C)',
@@ -270,7 +273,8 @@ export const INITIAL_PATIENTS: Patient[] = [
     bed: 'Bed 11',
     ward: 'Ward 2A - Gastroenterology',
     admissionDate: '2026-08-07',
-    consultant: 'Dr. Michael Chang, MD',
+    consultant: 'Dr. Alex Rivera, MD',
+    assignedDoctorId: 'usr-1',
     primaryDiagnosis: 'Decompensated Chronic Liver Disease (NASH Cirrhosis) with Ascites',
     activeProblems: [
       'Deranged Coagulation Profile (INR 2.1 ↑)',
@@ -429,5 +433,66 @@ export const INITIAL_PATIENTS: Patient[] = [
     tasks: [
       { id: 't12', patientId: 'PT-18340', description: 'Review histopathology report on appendectomy specimen', category: 'REPORT_REVIEW', status: 'PENDING' }
     ]
+  },
+  {
+    patientId: 'PT-72941',
+    name: 'Eleanor Davis',
+    age: 58,
+    sex: 'Female',
+    bed: 'Discharged (Bed 07)',
+    ward: 'Ward 1B - Respiratory Med',
+    admissionDate: '2026-08-04',
+    consultant: 'Dr. Sarah Jenkins, MD',
+    assignedDoctorId: 'usr-2',
+    status: 'DISCHARGED',
+    dischargeData: {
+      dischargeDate: '2026-08-12',
+      conditionOnDischarge: 'RECOVERED',
+      dischargeSummary: '58-year-old female admitted with acute exacerbation of Bronchial Asthma triggered by viral URI. Successfully treated with nebulized bronchodilators, short course IV Hydrocortisone transitioned to oral Prednisolone, and chest physiotherapy. Peak expiratory flow rate normalized to >85% predicted. Discharged in stable, asymptomatic condition.',
+      followUpInstructions: 'Continue Inhaler Budesonide/Formoterol 200/6mcg 2 puffs BD. Complete Prednisolone taper over next 3 days. Follow up in Pulmonology Clinic in 2 weeks.',
+      dischargedBy: 'Dr. Sarah Jenkins, MD',
+      dischargedAt: '11:30 AM',
+    },
+    primaryDiagnosis: 'Acute Exacerbation of Bronchial Asthma (Resolved)',
+    activeProblems: [
+      'Resolved Bronchospasm',
+      'Hypertension (Controlled)'
+    ],
+    differentialDiagnoses: ['Acute Viral Bronchitis', 'Atypical Pneumonia'],
+    priority: 'STABLE',
+    lastUpdate: 'Discharged on 2026-08-12. Condition: RECOVERED. Fully ambulatory with normal PEFR.',
+    pendingInvestigations: [],
+    todayPriority: 'Discharged - Completed Outpatient Transition',
+    todayPlan: 'Continue outpatient inhalers, follow up in 2 weeks.',
+    chiefComplaints: 'Severe breathlessness and wheezing on admission',
+    hpi: '58yo female with past history of moderate persistent asthma presenting with worsening dyspnea and productive cough for 3 days.',
+    pastMedicalHistory: 'Asthma x 20 yrs, HTN x 8 yrs',
+    drugHistory: 'Budesonide/Formoterol 200/6mcg, Amlodipine 5mg OD',
+    allergies: 'Aspirin (Bronchospasm)',
+    familyPersonalHistory: 'Non-smoker',
+    examinationSummary: 'Discharge Vitals: BP 124/80, HR 72, SpO2 99% on room air. Chest clear on auscultation, no wheeze or crepitations.',
+    medications: [
+      { id: 'm20', drugName: 'Budesonide/Formoterol Turbuhaler', dose: '200/6 mcg', route: 'Inhaled', frequency: 'BD', status: 'ACTIVE', startDate: '2026-08-04' },
+      { id: 'm21', drugName: 'Prednisolone', dose: '10 mg', route: 'Oral', frequency: 'OD (Tapering)', status: 'ACTIVE', startDate: '2026-08-08' },
+      { id: 'm22', drugName: 'Amlodipine', dose: '5 mg', route: 'Oral', frequency: 'OD', status: 'ACTIVE', startDate: '2026-08-04' }
+    ],
+    investigations: [
+      { id: 'inv-80', testName: 'Peak Expiratory Flow (PEFR)', category: 'OTHER', result: '420', numericValue: 420, unit: 'L/min', referenceRange: '380 - 450', date: '2026-08-12', time: '09:00', confidence: 'HIGH', flag: 'NORMAL', doctorVerified: true },
+      { id: 'inv-81', testName: 'CBC - WBC', category: 'CBC', result: '7.2', numericValue: 7.2, unit: 'x10³/µL', referenceRange: '4.0 - 11.0', date: '2026-08-11', time: '08:00', confidence: 'HIGH', flag: 'NORMAL', doctorVerified: true }
+    ],
+    dailyRounds: [
+      {
+        id: 'rd-10',
+        date: '2026-08-12',
+        complaints: 'No breathlessness, slept well without waking up',
+        vitals: { bp: '124/80', pulse: '72', temperature: '36.6°C', respiratoryRate: '14', spo2: '99%', oxygenRequirement: 'Room air' },
+        examination: 'Chest clear, good air entry bilaterally, no rhonchi.',
+        assessment: 'Asthma exacerbation resolved. Fit for discharge.',
+        plan: 'Discharge with inhalers and steroid taper. Pulmonology OPD follow up in 2 weeks.',
+        tasks: []
+      }
+    ],
+    documents: [],
+    tasks: []
   }
 ];

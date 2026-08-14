@@ -14,12 +14,16 @@ import {
   ArrowRight,
   CheckCircle2,
   RefreshCw,
-  HelpCircle
+  HelpCircle,
+  ChevronLeft,
+  User
 } from 'lucide-react';
 import { Patient, DocumentType, ExtractedField, InvestigationResult } from '../types';
 
 interface CaptureUploadProps {
   patients: Patient[];
+  initialPatientId?: string;
+  onBackToProfile?: () => void;
   onSaveExtractedData: (
     patientId: string,
     docType: DocumentType,
@@ -81,9 +85,19 @@ const SAMPLE_DOCS = [
 
 export const CaptureUpload: React.FC<CaptureUploadProps> = ({
   patients,
+  initialPatientId,
+  onBackToProfile,
   onSaveExtractedData,
 }) => {
-  const [selectedPatientId, setSelectedPatientId] = React.useState<string>(patients[0]?.patientId || '');
+  const [selectedPatientId, setSelectedPatientId] = React.useState<string>(
+    initialPatientId || patients[0]?.patientId || ''
+  );
+
+  React.useEffect(() => {
+    if (initialPatientId) {
+      setSelectedPatientId(initialPatientId);
+    }
+  }, [initialPatientId]);
   const [imageUri, setImageUri] = React.useState<string | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
 
@@ -225,6 +239,19 @@ export const CaptureUpload: React.FC<CaptureUploadProps> = ({
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-[1600px] mx-auto text-slate-900">
+      {/* Back button if navigating from patient profile */}
+      {onBackToProfile && (
+        <div className="flex items-center justify-between">
+          <button
+            onClick={onBackToProfile}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-3.5 py-2 rounded-xl transition-colors shadow-2xs cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Back to Patient Profile</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Banner */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-md text-slate-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -264,6 +291,29 @@ export const CaptureUpload: React.FC<CaptureUploadProps> = ({
         </div>
       </div>
 
+      {/* Capture Options / Upload Dropzone if no image selected */}
+      {!imageUri && (
+        <div className="border-2 border-dashed border-slate-300 rounded-3xl p-8 sm:p-10 bg-white text-center space-y-4 shadow-2xs">
+          <div className="w-16 h-16 mx-auto bg-teal-50 text-teal-700 rounded-2xl border border-teal-200 flex items-center justify-center">
+            <Camera className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Capture or Upload Medical Document</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              Support CBC, LFT, RFT, Electrolytes, Imaging, Admission sheets, Prescriptions, and Handwritten Progress Notes.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
+            <label className="cursor-pointer bg-teal-600 hover:bg-teal-700 text-white font-bold px-5 py-3 rounded-xl text-xs shadow-xs flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              <span>Upload Document Image</span>
+              <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* Safety Mandatory Principle Box */}
       <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between gap-2 shadow-2xs">
         <div className="flex items-center gap-2 font-medium">
@@ -276,15 +326,29 @@ export const CaptureUpload: React.FC<CaptureUploadProps> = ({
 
       {/* Pending Investigations Fulfillment Banner */}
       {selectedPatient?.pendingInvestigations && selectedPatient.pendingInvestigations.length > 0 && (
-        <div className="bg-amber-50 border border-amber-300 p-4 rounded-xl space-y-2 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-              <span>📋</span>
-              <span>Pending Investigations for {selectedPatient.name} ({selectedPatient.pendingInvestigations.length}):</span>
-            </span>
-            <span className="text-[11px] text-amber-800 font-medium">Select items resolved by this report</span>
+        <div className="bg-gradient-to-br from-amber-50/80 via-white to-orange-50/30 border border-amber-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-100/80 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0 shadow-2xs">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                    Pending Investigations for {selectedPatient.name}
+                  </h4>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-mono text-[10px] font-bold rounded-full border border-amber-200">
+                    {selectedPatient.pendingInvestigations.length} Pending
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Select which pending tests are fulfilled or updated by this document
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2 pt-1">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-0.5">
             {selectedPatient.pendingInvestigations.map((inv) => {
               const isChecked = fulfilledPendingItems.includes(inv);
               return (
@@ -292,20 +356,37 @@ export const CaptureUpload: React.FC<CaptureUploadProps> = ({
                   key={inv}
                   type="button"
                   onClick={() => toggleFulfilledItem(inv)}
-                  className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center gap-2 select-none ${
+                  className={`group text-left cursor-pointer p-3 rounded-xl border transition-all flex items-start justify-between gap-2.5 select-none ${
                     isChecked
-                      ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
-                      : 'bg-white text-slate-700 border-amber-200 hover:bg-amber-100/50'
+                      ? 'bg-teal-50/90 border-teal-500 ring-1 ring-teal-500 shadow-2xs'
+                      : 'bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 text-slate-700 shadow-2xs'
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => {}}
-                    className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
-                  />
-                  <span>⏳ {inv}</span>
-                  {isChecked && <span className="text-[10px] bg-amber-700 px-1.5 py-0.2 rounded text-white">Will Clear</span>}
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className={`w-4 h-4 rounded-md mt-0.5 flex items-center justify-center transition-colors shrink-0 ${
+                      isChecked ? 'bg-teal-600 text-white' : 'border border-slate-300 bg-white group-hover:border-teal-400'
+                    }`}>
+                      {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-xs font-bold leading-tight truncate ${
+                        isChecked ? 'text-teal-950' : 'text-slate-800'
+                      }`}>
+                        {inv}
+                      </p>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {isChecked ? 'Marked for resolution' : 'Click to fulfill'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 border whitespace-nowrap ${
+                    isChecked
+                      ? 'bg-teal-100/80 text-teal-800 border-teal-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {isChecked ? '✓ Will Clear' : '⏳ Pending'}
+                  </span>
                 </button>
               );
             })}
@@ -331,29 +412,6 @@ export const CaptureUpload: React.FC<CaptureUploadProps> = ({
           ))}
         </div>
       </div>
-
-      {/* Capture Options / Upload Dropzone if no image selected */}
-      {!imageUri && (
-        <div className="border-2 border-dashed border-slate-300 rounded-3xl p-10 bg-white text-center space-y-4 shadow-2xs">
-          <div className="w-16 h-16 mx-auto bg-teal-50 text-teal-700 rounded-2xl border border-teal-200 flex items-center justify-center">
-            <Camera className="w-8 h-8" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">Capture or Upload Medical Document</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-              Support CBC, LFT, RFT, Electrolytes, Imaging, Admission sheets, Prescriptions, and Handwritten Progress Notes.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-3 pt-2">
-            <label className="cursor-pointer bg-teal-600 hover:bg-teal-700 text-white font-bold px-5 py-3 rounded-xl text-xs shadow-xs flex items-center gap-2">
-              <Upload className="w-4 h-4" />
-              <span>Upload Document Image</span>
-              <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-            </label>
-          </div>
-        </div>
-      )}
 
       {/* SPLIT SCREEN OCR REVIEW INTERFACE (When Image Loaded) */}
       {imageUri && (
@@ -535,15 +593,39 @@ export const CaptureUpload: React.FC<CaptureUploadProps> = ({
             {/* Doctor Verification & Save Button */}
             <div className="pt-4 border-t border-slate-200 space-y-2">
               {isVerified ? (
-                <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Extracted Document Verified and Saved to Patient Profile!</span>
+                <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-center gap-2 font-bold text-xs">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <span>Extracted Document Verified and Saved to Patient Profile!</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    {onBackToProfile && (
+                      <button
+                        onClick={onBackToProfile}
+                        className="bg-teal-700 hover:bg-teal-800 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                      >
+                        <User className="w-3.5 h-3.5" />
+                        <span>View Updated Patient Profile</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setImageUri(null);
+                        setExtractedFields([]);
+                        setExtractedLabs([]);
+                        setIsVerified(false);
+                      }}
+                      className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold px-3.5 py-2 rounded-xl text-xs transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <span>Upload Another Document</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
                   onClick={handleSaveToPatient}
                   disabled={isProcessing}
-                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-xs transition-all text-xs flex items-center justify-center gap-2"
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-xs transition-all text-xs flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
                   <span>VERIFY & SAVE TO PATIENT RECORD</span>

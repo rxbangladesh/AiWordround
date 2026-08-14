@@ -1,13 +1,15 @@
 import React from 'react';
-import { X, UserPlus, Check } from 'lucide-react';
-import { Patient, PriorityLevel } from '../types';
+import { X, UserPlus, Check, Stethoscope } from 'lucide-react';
+import { Patient, PriorityLevel, UserAccount } from '../types';
 
 interface NewPatientModalProps {
+  currentUser?: UserAccount | null;
   onClose: () => void;
   onAddPatient: (patient: Patient) => void;
 }
 
 export const NewPatientModal: React.FC<NewPatientModalProps> = ({
+  currentUser,
   onClose,
   onAddPatient,
 }) => {
@@ -15,8 +17,8 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
   const [age, setAge] = React.useState<number>(50);
   const [sex, setSex] = React.useState<'Male' | 'Female' | 'Other'>('Male');
   const [bed, setBed] = React.useState('Bed 18');
-  const [ward, setWard] = React.useState('Ward 3B - Nephrology/Internal Med');
-  const [consultant, setConsultant] = React.useState('Dr. Sarah Jenkins, MD');
+  const [ward, setWard] = React.useState(currentUser?.assignedWard || 'Ward 3B - Nephrology/Internal Med');
+  const [consultant, setConsultant] = React.useState(currentUser?.name || 'Dr. Alex Rivera, MD');
   const [primaryDiagnosis, setPrimaryDiagnosis] = React.useState('');
   const [priority, setPriority] = React.useState<PriorityLevel>('ACTION');
   const [lastUpdate, setLastUpdate] = React.useState('');
@@ -43,6 +45,7 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
       ward,
       admissionDate: new Date().toISOString().split('T')[0],
       consultant,
+      assignedDoctorId: currentUser?.id,
       primaryDiagnosis: safeDiagnosis,
       activeProblems: [safeDiagnosis],
       priority,

@@ -140,6 +140,7 @@ export interface Patient {
   // Discharge Status & Stored Data
   status?: 'ACTIVE' | 'DISCHARGED';
   dischargeData?: DischargeData;
+  assignedDoctorId?: string;
 
   // Clinical history fields
   chiefComplaints: string;
@@ -174,6 +175,8 @@ export interface PreRoundBriefSummary {
 
 export type UserRole = 'ATTENDING_PHYSICIAN' | 'RESIDENT_DOCTOR' | 'WARD_NURSE' | 'CLINICAL_ADMIN';
 
+export type ApprovalStatus = 'APPROVED' | 'PENDING' | 'REJECTED';
+
 export interface UserAccount {
   id: string;
   name: string;
@@ -182,7 +185,16 @@ export interface UserAccount {
   role: UserRole;
   roleTitle: string; // e.g. "Attending Physician"
   department: string;
+  specialty?: string;
+  hospitalName?: string;
   licenseNumber?: string;
   pin?: string; // 4-digit quick lock PIN
   avatarColor?: string;
+  approvalStatus: ApprovalStatus;
+  registeredAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectionReason?: string;
+  assignedWard?: string;
+  phone?: string;
 }

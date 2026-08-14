@@ -173,14 +173,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-slate-900 text-sm">{p.name}</span>
                       <span className="text-xs text-slate-500 font-mono">({p.bed})</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                        p.priority === 'CRITICAL' ? 'bg-red-50 text-red-700 border border-red-200' :
-                        p.priority === 'ACTION' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                        p.priority === 'REVIEW' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
-                        'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      }`}>
-                        {p.priority}
-                      </span>
+                      {p.status === 'DISCHARGED' ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-slate-800 text-slate-200 border border-slate-700 uppercase">
+                          Discharged
+                        </span>
+                      ) : (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                          p.priority === 'CRITICAL' ? 'bg-red-50 text-red-700 border border-red-200' :
+                          p.priority === 'ACTION' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                          p.priority === 'REVIEW' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                          'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {p.priority}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-600 line-clamp-1 mt-0.5">{p.primaryDiagnosis}</p>
                   </div>
@@ -214,10 +220,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden sm:inline">ROUND</span>
           </button>
 
-          {/* Capture Report Button (Icon only on mobile, with text on sm+) */}
+          {/* Capture Report Button (Hidden on mobile, visible on sm+ screens) */}
           <button
             onClick={onOpenCapture}
-            className="flex items-center gap-1 sm:gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-2.5 sm:px-3 py-2 min-h-[36px] sm:min-h-[40px] rounded-xl font-bold text-xs shadow-xs transition-all shrink-0"
+            className="hidden sm:flex items-center gap-1 sm:gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-2.5 sm:px-3 py-2 min-h-[36px] sm:min-h-[40px] rounded-xl font-bold text-xs shadow-xs transition-all shrink-0"
             title="Photo / Upload Investigation Document"
           >
             <Camera className="w-4 h-4 shrink-0" />
@@ -227,11 +233,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Add Patient Button */}
           <button
             onClick={onOpenNewPatient}
-            className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-2 sm:px-2.5 py-2 min-h-[36px] sm:min-h-[40px] rounded-xl font-bold text-xs transition-colors shrink-0"
+            className="flex items-center gap-1 sm:gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-2.5 sm:px-3 py-2 min-h-[36px] sm:min-h-[40px] rounded-xl font-bold text-xs transition-colors shrink-0"
             title="Admit / Add New Patient"
           >
-            <Plus className="w-4 h-4" />
-            <span className="hidden lg:inline">Admit</span>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Admit</span>
           </button>
 
           {/* User Profile & Lock Dropdown (Desktop/Tablet top navbar; in mobile it is located at left sidebar bottom) */}
@@ -355,9 +361,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-full text-left p-2.5 hover:bg-slate-50 flex items-center justify-between"
                 >
                   <div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-slate-900 text-xs">{p.name}</span>
                       <span className="text-[11px] text-slate-500 font-mono">({p.bed})</span>
+                      {p.status === 'DISCHARGED' && (
+                        <span className="text-[9px] px-1 py-0.2 rounded font-bold bg-slate-800 text-slate-200 uppercase">
+                          Discharged
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-slate-600 line-clamp-1">{p.primaryDiagnosis}</p>
                   </div>

@@ -31,6 +31,11 @@ export const PreRoundBrief: React.FC<PreRoundBriefProps> = ({
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const hasFetchedRef = React.useRef(false);
 
+  // Only active inpatients in Pre-Round Brief
+  const activePatients = React.useMemo(() => {
+    return patients.filter((p) => p.status !== 'DISCHARGED');
+  }, [patients]);
+
   // Generate brief on button click or initial mount
   const generateBrief = React.useCallback(async () => {
     setIsGenerating(true);
@@ -38,7 +43,7 @@ export const PreRoundBrief: React.FC<PreRoundBriefProps> = ({
       const response = await fetch('/api/brief/summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patients }),
+        body: JSON.stringify({ patients: activePatients }),
       });
       const data = await response.json();
       if (data.success && data.summaries) {
@@ -52,7 +57,7 @@ export const PreRoundBrief: React.FC<PreRoundBriefProps> = ({
     } finally {
       setIsGenerating(false);
     }
-  }, [patients.length]);
+  }, [activePatients]);
 
   React.useEffect(() => {
     if (!hasFetchedRef.current) {
@@ -69,15 +74,15 @@ export const PreRoundBrief: React.FC<PreRoundBriefProps> = ({
       REVIEW: 3,
       STABLE: 4,
     };
-    return [...patients].sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
-  }, [patients]);
+    return [...activePatients].sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
+  }, [activePatients]);
 
   const copyPatientSummary = (p: Patient) => {
     const text = `BED: ${p.bed} - ${p.name} (${p.age}${p.sex[0]})
 LAST UPDATE: ${p.lastUpdate}
 DIAGNOSIS: ${p.primaryDiagnosis}
-PROBLEMS: ${p.activeProblems.join(', ')}
-PENDING INVS: ${p.pendingInvestigations.join(', ')}
+PROBLEMS: ${(p.activeProblems || []).join(', ')}
+PENDING INVS: ${(p.pendingInvestigations || []).join(', ')}
 TODAY'S PRIORITY: ${p.todayPriority}
 TODAY'S PLAN: ${p.todayPlan}`;
     navigator.clipboard.writeText(text);
@@ -222,51 +227,62 @@ TODAY'S PLAN: ${p.todayPlan}`;
               </div>
 
               {/* Brief Content - Ordered STRICTLY as requested */}
-              <div className="p-5 space-y-4">
+              <div className="p-3.5 sm:p-5 space-y-3.5 sm:space-y-4">
                 {/* 1. LAST UPDATE (MUST COME FIRST!) */}
-                <div className={`p-4 rounded-xl border text-sm space-y-1.5 ${
+                <div className={`p-3.5 sm:p-4 rounded-xl border text-xs sm:text-sm space-y-1.5 ${
                   isCritical
-                    ? 'bg-red-50/90 border-red-200 text-red-950'
+                    ? 'bg-red-50/85 border-red-200 text-red-950'
                     : isAction
-                    ? 'bg-amber-50/90 border-amber-200 text-amber-950'
+                    ? 'bg-amber-50/85 border-amber-200 text-amber-950'
                     : 'bg-slate-50 border-slate-200 text-slate-900'
                 }`}>
-                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-amber-700">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-amber-600" />
-                      <span>1. LAST UPDATE (Clinically Significant Changes)</span>
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5 text-amber-800">
+                      <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>1. LAST UPDATE / CLINICAL TREND</span>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-bold">Priority Review Item</span>
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                      isCritical
+                        ? 'bg-red-100/90 text-red-800 border-red-300'
+                        : isAction
+                        ? 'bg-amber-100/90 text-amber-900 border-amber-300'
+                        : 'bg-slate-200/80 text-slate-700 border-slate-300'
+                    }`}>
+                      Priority Review Item
+                    </span>
                   </div>
-                  <p className="font-extrabold text-sm sm:text-base leading-snug">
+                  <p className="font-extrabold text-sm sm:text-base leading-snug sm:leading-relaxed text-slate-900">
                     {patient.lastUpdate}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-xs">
                   {/* 2. CURRENT PROBLEMS */}
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                  <div className="bg-slate-50/90 p-3 sm:p-3.5 rounded-xl border border-slate-200 space-y-2">
                     <div className="font-bold text-slate-700 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <span>2. Current Active Problems</span>
                     </div>
-                    <ul className="list-disc list-inside space-y-1 text-slate-800">
-                      {patient.activeProblems.map((prob, i) => (
-                        <li key={i} className="font-medium">{prob}</li>
+                    <ul className="space-y-1.5 text-slate-800">
+                      {(patient.activeProblems || []).map((prob, i) => (
+                        <li key={i} className="flex items-start gap-1.5">
+                          <span className="text-teal-600 font-bold">•</span>
+                          <span className="font-medium leading-relaxed">{prob}</span>
+                        </li>
                       ))}
                     </ul>
                   </div>
 
                   {/* 3. WORKING DIAGNOSIS */}
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                  <div className="bg-slate-50/90 p-3 sm:p-3.5 rounded-xl border border-slate-200 space-y-2">
                     <div className="font-bold text-slate-700 text-xs uppercase tracking-wider">
                       3. Working Diagnosis
                     </div>
-                    <p className="font-bold text-teal-800 text-sm">
+                    <p className="font-bold text-teal-900 text-sm leading-snug">
                       {patient.primaryDiagnosis}
                     </p>
                     {patient.differentialDiagnoses && patient.differentialDiagnoses.length > 0 && (
-                      <div className="text-[11px] text-slate-600 pt-1 border-t border-slate-200">
+                      <div className="text-[11px] text-slate-600 pt-1.5 border-t border-slate-200">
                         <span className="font-semibold text-slate-700">Differential:</span>{' '}
                         {patient.differentialDiagnoses.join(' • ')}
                       </div>
@@ -274,7 +290,7 @@ TODAY'S PLAN: ${p.todayPlan}`;
                   </div>
 
                   {/* 4. INVESTIGATION STATUS */}
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                  <div className="bg-slate-50/90 p-3 sm:p-3.5 rounded-xl border border-slate-200 space-y-2">
                     <div className="font-bold text-slate-700 text-xs uppercase tracking-wider">
                       4. Investigation Status & Pending Labs
                     </div>
@@ -283,30 +299,30 @@ TODAY'S PLAN: ${p.todayPlan}`;
                         {patient.pendingInvestigations.map((inv, i) => (
                           <span
                             key={i}
-                            className="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-md text-xs font-mono font-semibold"
+                            className="bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold flex items-center gap-1 shadow-2xs"
                           >
                             ⏳ {inv}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-slate-500 italic">No urgent investigations pending</p>
+                      <p className="text-slate-500 text-xs italic">No urgent investigations pending</p>
                     )}
                   </div>
 
                   {/* 5. TODAY'S PRIORITY & 6. TODAY'S PLAN */}
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                  <div className="bg-slate-50/90 p-3 sm:p-3.5 rounded-xl border border-slate-200 space-y-2">
                     <div className="font-bold text-slate-700 text-xs uppercase tracking-wider">
-                      5. Today's Priority & 6. Plan
+                      5. Today's Priority & Plan
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div>
-                        <span className="font-bold text-amber-700">Priority: </span>
-                        <span className="text-slate-800 font-semibold">{patient.todayPriority}</span>
+                        <span className="font-bold text-amber-800 text-[11px] uppercase tracking-wider">Focus Priority: </span>
+                        <p className="text-slate-900 font-bold text-xs mt-0.5">{patient.todayPriority}</p>
                       </div>
-                      <div className="pt-1.5 border-t border-slate-200">
-                        <span className="font-bold text-teal-800">Plan: </span>
-                        <p className="text-slate-800 whitespace-pre-line mt-0.5">{patient.todayPlan}</p>
+                      <div className="pt-2 border-t border-slate-200">
+                        <span className="font-bold text-teal-800 text-[11px] uppercase tracking-wider">Clinical Action Plan: </span>
+                        <p className="text-slate-800 whitespace-pre-line text-xs font-medium mt-0.5 leading-relaxed">{patient.todayPlan}</p>
                       </div>
                     </div>
                   </div>

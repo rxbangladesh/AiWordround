@@ -13,29 +13,52 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
-  UserPlus
+  UserPlus,
+  Clock,
+  Building2,
+  ShieldAlert,
+  ArrowLeft,
+  Shield,
+  Hash
 } from 'lucide-react';
 import { UserAccount, UserRole } from '../types';
-import { authenticateUser, registerNewUser, DEFAULT_USERS, getStoredUsers } from '../utils/auth';
+import { 
+  authenticateUser, 
+  authenticateUserWithPin, 
+  registerNewUser, 
+  approveDoctor, 
+  DEFAULT_USERS, 
+  getStoredUsers 
+} from '../utils/auth';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserAccount) => void;
+  onRegisterDoctor?: (newDoc: Partial<UserAccount>) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const [activeTab, setActiveTab] = React.useState<'login' | 'register' | 'pin'>('login');
+  const [activeTab, setActiveTab] = React.useState<'login' | 'register' | 'admin'>('login');
   
-  // Login Form State
+  // Doctor Sign In Mode: Password vs. PIN toggle in the same section
+  const [loginMethod, setLoginMethod] = React.useState<'password' | 'pin'>('password');
   const [email, setEmail] = React.useState('alex.rivera@hospital.org');
   const [password, setPassword] = React.useState('doctor123');
+  const [doctorPin, setDoctorPin] = React.useState('1234');
   const [showPassword, setShowPassword] = React.useState(false);
   const [rememberMe, setRememberMe] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // PIN Unlock State
-  const [selectedUserForPin, setSelectedUserForPin] = React.useState<UserAccount>(DEFAULT_USERS[0]);
-  const [pinDigits, setPinDigits] = React.useState<string>('');
+  // Admin Login Tab State
+  const [adminAuthMethod, setAdminAuthMethod] = React.useState<'password' | 'pin'>('password');
+  const [adminEmail, setAdminEmail] = React.useState('admin@hospital.org');
+  const [adminPassword, setAdminPassword] = React.useState('admin123');
+  const [adminPin, setAdminPin] = React.useState('9999');
+  const [showAdminPassword, setShowAdminPassword] = React.useState(false);
+
+  // Pending Approval State
+  const [pendingAccount, setPendingAccount] = React.useState<UserAccount | null>(null);
+  const [registrationDoneUser, setRegistrationDoneUser] = React.useState<UserAccount | null>(null);
 
   // Register Form State
   const [regName, setRegName] = React.useState('');
@@ -43,62 +66,93 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [regPassword, setRegPassword] = React.useState('');
   const [regRole, setRegRole] = React.useState<UserRole>('ATTENDING_PHYSICIAN');
   const [regDepartment, setRegDepartment] = React.useState('Internal Medicine & Nephrology');
+  const [regSpecialty, setRegSpecialty] = React.useState('Nephrology & Renal Medicine');
   const [regLicense, setRegLicense] = React.useState('');
   const [regPin, setRegPin] = React.useState('1234');
-  const [regSuccess, setRegSuccess] = React.useState(false);
 
-  const availableUsers = React.useMemo(() => getStoredUsers(), [activeTab]);
+  const availableUsers = React.useMemo(() => getStoredUsers(), [activeTab, pendingAccount]);
 
-  // Handle Standard Password Login
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // Handle Standard Doctor Login (Password or PIN)
+  const handleDoctorLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setPendingAccount(null);
+    setIsSubmitting(true);
+
+    setTimeout(() => {
+      let result;
+      if (loginMethod === 'password') {
+        result = authenticateUser(email, password);
+      } else {
+        result = authenticateUserWithPin(email, doctorPin);
+      }
+      setIsSubmitting(false);
+
+      if (result.success && result.user) {
+        onLoginSuccess(result.user);
+      } else if (result.isPendingApproval && result.user) {
+        setPendingAccount(result.user);
+      } else {
+        setError(result.error || 'Authentication failed. Please verify your credentials.');
+      }
+    }, 200);
+  };
+
+  // Handle Admin Login Submit
+  const handleAdminLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
 
     setTimeout(() => {
-      const result = authenticateUser(email, password);
+      let result;
+      if (adminAuthMethod === 'password') {
+        result = authenticateUser(adminEmail, adminPassword);
+      } else {
+        result = authenticateUserWithPin(adminEmail, adminPin);
+      }
       setIsSubmitting(false);
 
       if (result.success && result.user) {
         onLoginSuccess(result.user);
       } else {
-        setError(result.error || 'Authentication failed. Please check your credentials.');
+        setError(result.error || 'Clinical Administrator authentication failed.');
       }
-    }, 250);
+    }, 200);
   };
 
-  // Handle Fast Demo Account Selection
+  // Fast 1-Click Demo Accounts
   const handleDemoSelect = (user: UserAccount, pass: string = 'doctor123') => {
     setEmail(user.email);
     setPassword(pass);
+    setDoctorPin(user.pin || '1234');
     setError(null);
+    setPendingAccount(null);
+    setRegistrationDoneUser(null);
+    
+    if (user.role === 'CLINICAL_ADMIN') {
+      setActiveTab('admin');
+      setAdminEmail(user.email);
+      setAdminPassword(pass);
+      setAdminPin(user.pin || '9999');
+    } else {
+      setActiveTab('login');
+    }
+
     const result = authenticateUser(user.email, pass);
     if (result.success && result.user) {
       onLoginSuccess(result.user);
+    } else if (result.isPendingApproval && result.user) {
+      setPendingAccount(result.user);
     }
   };
 
-  // Handle Quick PIN Entry
-  const handlePinInput = (num: string) => {
-    if (pinDigits.length >= 4) return;
-    const newPin = pinDigits + num;
-    setPinDigits(newPin);
-    setError(null);
-
-    if (newPin.length === 4) {
-      if (selectedUserForPin.pin === newPin || newPin === '1234') {
-        setTimeout(() => {
-          onLoginSuccess(selectedUserForPin);
-        }, 150);
-      } else {
-        setError('Incorrect 4-digit PIN. Please try again.');
-        setTimeout(() => setPinDigits(''), 700);
-      }
+  // Handle Instant Approval in Demo
+  const handleInstantApproveAndLogin = (userToApprove: UserAccount) => {
+    const res = approveDoctor(userToApprove.id, 'Dr. William Bradley, MD (Clinical Admin)');
+    if (res.success && res.user) {
+      onLoginSuccess(res.user);
     }
-  };
-
-  const handlePinBackspace = () => {
-    setPinDigits(pinDigits.slice(0, -1));
   };
 
   // Handle New Doctor Registration
@@ -107,7 +161,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     setError(null);
 
     if (!regName.trim() || !regEmail.trim() || !regPassword.trim()) {
-      setError('Please fill in all required fields.');
+      setError('Please fill in all required clinical registration fields.');
       return;
     }
 
@@ -123,24 +177,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       regRole,
       regDepartment,
       regLicense || `MD-${Math.floor(10000 + Math.random() * 90000)}`,
-      regPin || '1234'
+      regPin || '1234',
+      regSpecialty || regDepartment,
+      'St. Jude Metropolitan Hospital',
+      false // requires admin approval!
     );
 
     if (result.success && result.user) {
-      setRegSuccess(true);
-      setTimeout(() => {
-        onLoginSuccess(result.user!);
-      }, 600);
+      setRegistrationDoneUser(result.user);
+      setRegName('');
+      setRegEmail('');
+      setRegPassword('');
     } else {
-      setError(result.error || 'Failed to create account.');
+      setError(result.error || 'Failed to register doctor profile.');
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-teal-500 selection:text-white font-sans relative overflow-hidden">
-      {/* Background Ambience / Subtle Grid */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(13,148,136,0.15),rgba(255,255,255,0))] pointer-events-none" />
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-500/30 to-transparent" />
+      {/* Background Ambience */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(13,148,136,0.18),rgba(255,255,255,0))] pointer-events-none" />
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-500/40 to-transparent" />
 
       {/* Top Hospital Header */}
       <header className="p-4 sm:p-6 max-w-[1600px] mx-auto w-full flex items-center justify-between relative z-10">
@@ -151,403 +208,650 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-black tracking-tight text-lg text-white">AI Ward Round</span>
-              <span className="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-teal-950 text-teal-400 border border-teal-800 rounded-md">
-                Hospital Portal
+              <span className="px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider bg-teal-950 text-teal-300 border border-teal-800 rounded-md">
+                Hospital SaaS
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-medium">Acute Care & Clinical Decision Support System</p>
+            <p className="text-xs text-slate-400 font-medium">Multi-Doctor Inpatient & Decision Support System</p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
+        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-300 bg-slate-900/90 px-3.5 py-1.5 rounded-xl border border-slate-800 shadow-xs">
           <ShieldCheck className="w-4 h-4 text-teal-400" />
-          <span>Encrypted Clinical Session</span>
+          <span>Role-Based Clinical Authorization Active</span>
         </div>
       </header>
 
       {/* Main Authentication Container */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 relative z-10">
-        <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-          
-          {/* Tabs Selector */}
-          <div className="grid grid-cols-3 gap-1 bg-slate-950/80 p-1 rounded-2xl border border-slate-800/80 text-xs font-bold">
-            <button
-              onClick={() => { setActiveTab('login'); setError(null); }}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'login'
-                  ? 'bg-teal-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Password</span>
-            </button>
-            <button
-              onClick={() => { setActiveTab('pin'); setError(null); }}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'pin'
-                  ? 'bg-teal-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Quick PIN</span>
-            </button>
-            <button
-              onClick={() => { setActiveTab('register'); setError(null); }}
-              className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'register'
-                  ? 'bg-teal-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Register</span>
-            </button>
-          </div>
-
-          {/* Error Banner */}
-          {error && (
-            <div className="p-3 bg-red-950/70 border border-red-800/80 rounded-xl text-red-300 text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Success Banner */}
-          {regSuccess && (
-            <div className="p-3 bg-emerald-950/70 border border-emerald-800/80 rounded-xl text-emerald-300 text-xs flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <span>Account created successfully! Logging you in to the ward...</span>
-            </div>
-          )}
-
-          {/* TAB 1: Standard Password Login */}
-          {activeTab === 'login' && (
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Doctor / Staff Email or License ID
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="e.g. alex.rivera@hospital.org or MD-88294"
-                    className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all placeholder:text-slate-600"
-                  />
-                </div>
+        
+        {/* VIEW A: Awaiting Approval Modal/Banner (Shown when a pending doctor registers or attempts login) */}
+        {(pendingAccount || registrationDoneUser) ? (
+          <div className="w-full max-w-lg bg-slate-900/95 backdrop-blur-xl border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-in fade-in zoom-in-95">
+            <div className="text-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-950/40">
+                <Clock className="w-7 h-7 animate-pulse" />
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-300">
-                    Password
-                  </label>
-                  <span className="text-[11px] text-teal-400">
-                    Default demo: <code className="bg-slate-950 px-1 py-0.5 rounded text-teal-300">doctor123</code>
-                  </span>
-                </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    placeholder="Enter clinical password"
-                    className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 transition-all placeholder:text-slate-600"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-amber-400 bg-amber-950/80 px-2.5 py-1 rounded-full border border-amber-800/80 inline-block mb-1.5">
+                  Verification In Progress
+                </span>
+                <h2 className="text-xl font-black text-white">
+                  Registration Submitted & Pending Admin Approval
+                </h2>
+                <p className="text-xs text-slate-300 mt-1 max-w-sm mx-auto">
+                  Doctor account for <span className="font-bold text-white">{(pendingAccount || registrationDoneUser)?.name}</span> has been securely registered in the hospital directory.
+                </p>
               </div>
+            </div>
 
-              <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-teal-600 focus:ring-teal-500"
-                  />
-                  <span>Remember on this workstation</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('pin')}
-                  className="text-teal-400 hover:text-teal-300 font-medium"
-                >
-                  Use 4-Digit PIN
-                </button>
+            {/* Application Ticket Details */}
+            <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-slate-400">Doctor Name:</span>
+                <span className="font-bold text-white">{(pendingAccount || registrationDoneUser)?.name}</span>
               </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer text-sm"
-              >
-                <span>{isSubmitting ? 'Verifying Credentials...' : 'Sign In to Ward Round'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-          )}
-
-          {/* TAB 2: Quick Bedside 4-Digit PIN Unlock */}
-          {activeTab === 'pin' && (
-            <div className="space-y-5">
-              <div className="text-center space-y-1">
-                <p className="text-xs text-slate-400">Select Clinical User Profile:</p>
-                <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
-                  {availableUsers.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => { setSelectedUserForPin(u); setPinDigits(''); }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                        selectedUserForPin.id === u.id
-                          ? 'bg-teal-600 text-white border-teal-400 shadow-sm'
-                          : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      {u.name.split(',')[0]}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-slate-400">Clinical Role:</span>
+                <span className="font-semibold text-teal-300">{(pendingAccount || registrationDoneUser)?.roleTitle}</span>
               </div>
-
-              {/* Selected User Header */}
-              <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${selectedUserForPin.avatarColor || 'from-teal-600 to-emerald-600'} flex items-center justify-center text-white font-black text-sm`}>
-                    {selectedUserForPin.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-white">{selectedUserForPin.name}</h4>
-                    <p className="text-[11px] text-slate-400">{selectedUserForPin.roleTitle}</p>
-                  </div>
-                </div>
-                <span className="text-[10px] text-teal-400 bg-teal-950/80 px-2 py-0.5 rounded border border-teal-800">
-                  PIN: 1234
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-slate-400">Medical License ID:</span>
+                <span className="font-mono font-bold text-slate-200 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">
+                  {(pendingAccount || registrationDoneUser)?.licenseNumber || 'Verified Pending'}
                 </span>
               </div>
-
-              {/* PIN Bubbles Indicator */}
-              <div className="flex justify-center items-center gap-4 py-2">
-                {[0, 1, 2, 3].map((index) => (
-                  <div
-                    key={index}
-                    className={`w-4 h-4 rounded-full transition-all duration-200 ${
-                      pinDigits.length > index
-                        ? 'bg-teal-400 shadow-md shadow-teal-500/50 scale-110'
-                        : 'bg-slate-800 border border-slate-700'
-                    }`}
-                  />
-                ))}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-slate-400">Assigned Unit:</span>
+                <span className="text-slate-300">{(pendingAccount || registrationDoneUser)?.department}</span>
               </div>
-
-              {/* PIN Keypad Grid */}
-              <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => handlePinInput(num)}
-                    className="h-12 bg-slate-950 hover:bg-slate-800 active:bg-teal-700 text-white font-bold text-lg rounded-2xl border border-slate-800/80 flex items-center justify-center transition-colors shadow-xs"
-                  >
-                    {num}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setPinDigits('')}
-                  className="h-12 bg-slate-950 hover:bg-slate-800 text-slate-400 text-xs font-bold rounded-2xl border border-slate-800/80 flex items-center justify-center transition-colors"
-                >
-                  CLEAR
-                </button>
-                <button
-                  onClick={() => handlePinInput('0')}
-                  className="h-12 bg-slate-950 hover:bg-slate-800 active:bg-teal-700 text-white font-bold text-lg rounded-2xl border border-slate-800/80 flex items-center justify-center transition-colors shadow-xs"
-                >
-                  0
-                </button>
-                <button
-                  onClick={handlePinBackspace}
-                  className="h-12 bg-slate-950 hover:bg-slate-800 text-slate-400 text-sm font-bold rounded-2xl border border-slate-800/80 flex items-center justify-center transition-colors"
-                >
-                  ⌫
-                </button>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Approval Requirement:</span>
+                <span className="text-amber-400 font-semibold flex items-center gap-1">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Clinical Admin Review</span>
+                </span>
               </div>
             </div>
-          )}
 
-          {/* TAB 3: Register New Doctor Account */}
-          {activeTab === 'register' && (
-            <form onSubmit={handleRegisterSubmit} className="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Full Name & Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                  required
-                  placeholder="e.g. Dr. Jonathan Hayes, MBBS, FCPS"
-                  className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-teal-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Clinical Role <span className="text-red-400">*</span>
-                  </label>
-                  <select
-                    value={regRole}
-                    onChange={(e) => setRegRole(e.target.value as UserRole)}
-                    className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-teal-500"
-                  >
-                    <option value="ATTENDING_PHYSICIAN">Attending Physician / Consultant</option>
-                    <option value="RESIDENT_DOCTOR">Resident Medical Officer</option>
-                    <option value="WARD_NURSE">Ward Staff Nurse / Sister</option>
-                    <option value="CLINICAL_ADMIN">Clinical Administrator</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Medical License ID
-                  </label>
-                  <input
-                    type="text"
-                    value={regLicense}
-                    onChange={(e) => setRegLicense(e.target.value)}
-                    placeholder="e.g. BMDC-10492"
-                    className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-teal-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Ward / Department
-                </label>
-                <input
-                  type="text"
-                  value={regDepartment}
-                  onChange={(e) => setRegDepartment(e.target.value)}
-                  placeholder="e.g. Internal Medicine Ward 3B"
-                  className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-teal-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Email Address <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    required
-                    placeholder="doctor@hospital.org"
-                    className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-teal-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Password <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    required
-                    placeholder="Min 6 chars"
-                    className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-teal-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Quick Bedside 4-Digit PIN (Optional)
-                </label>
-                <input
-                  type="text"
-                  maxLength={4}
-                  value={regPin}
-                  onChange={(e) => setRegPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="1234"
-                  className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-teal-500"
-                />
-              </div>
-
+            {/* Action buttons for testing/reviewing */}
+            <div className="space-y-2.5 pt-2">
               <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all text-xs cursor-pointer mt-2"
+                onClick={() => handleInstantApproveAndLogin(pendingAccount || registrationDoneUser!)}
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 text-xs transition-all cursor-pointer"
               >
-                <UserPlus className="w-4 h-4" />
-                <span>Create Doctor Profile & Log In</span>
-              </button>
-            </form>
-          )}
-
-          {/* Quick Demo Logins Footer Bar */}
-          <div className="pt-4 border-t border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-                <span>1-Click Clinical Demo Accounts:</span>
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDemoSelect(DEFAULT_USERS[0], 'doctor123')}
-                className="p-2 bg-slate-950 hover:bg-slate-800/90 border border-slate-800 hover:border-teal-500/50 rounded-xl text-left transition-all group"
-              >
-                <div className="text-[11px] font-bold text-teal-300 group-hover:text-teal-200 truncate">
-                  Dr. Alex Rivera
-                </div>
-                <div className="text-[10px] text-slate-400 truncate">Attending Consultant</div>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Instant Approve & Open My Doctor Dashboard</span>
               </button>
 
               <button
-                type="button"
-                onClick={() => handleDemoSelect(DEFAULT_USERS[1], 'doctor123')}
-                className="p-2 bg-slate-950 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 rounded-xl text-left transition-all group"
+                onClick={() => {
+                  setPendingAccount(null);
+                  setRegistrationDoneUser(null);
+                  setActiveTab('admin');
+                }}
+                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all cursor-pointer"
               >
-                <div className="text-[11px] font-bold text-blue-300 group-hover:text-blue-200 truncate">
-                  Dr. Sarah Jenkins
-                </div>
-                <div className="text-[10px] text-slate-400 truncate">Senior Resident</div>
+                <UserCheck className="w-4 h-4 text-teal-400" />
+                <span>Log In as Admin to Review Approvals Queue</span>
               </button>
 
               <button
-                type="button"
-                onClick={() => handleDemoSelect(DEFAULT_USERS[2], 'nurse123')}
-                className="p-2 bg-slate-950 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-500/50 rounded-xl text-left transition-all group"
+                onClick={() => {
+                  setPendingAccount(null);
+                  setRegistrationDoneUser(null);
+                  setActiveTab('login');
+                }}
+                className="w-full text-slate-400 hover:text-slate-200 font-semibold text-xs py-2 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                <div className="text-[11px] font-bold text-amber-300 group-hover:text-amber-200 truncate">
-                  Emily Chen, RN
-                </div>
-                <div className="text-[10px] text-slate-400 truncate">Charge Nurse</div>
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Sign In Screen</span>
               </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+            
+            {/* Tabs Selector: 1. Sign In (with Password/PIN inside) 2. Doctor Register 3. Admin Login */}
+            <div className="grid grid-cols-3 gap-1 bg-slate-950/80 p-1 rounded-2xl border border-slate-800/80 text-xs font-bold">
+              <button
+                onClick={() => { setActiveTab('login'); setError(null); }}
+                className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'login'
+                    ? 'bg-teal-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
+              <button
+                onClick={() => { setActiveTab('register'); setError(null); }}
+                className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'register'
+                    ? 'bg-teal-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Doctor Register</span>
+              </button>
+              <button
+                onClick={() => { setActiveTab('admin'); setError(null); }}
+                className={`py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  activeTab === 'admin'
+                    ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-teal-300 border border-teal-500/40 shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5 text-teal-400" />
+                <span>Admin Login</span>
+              </button>
+            </div>
+
+            {/* TAB 1: DOCTOR SIGN IN WITH IN-SECTION PASSWORD OR PIN TOGGLE */}
+            {activeTab === 'login' && (
+              <form onSubmit={handleDoctorLoginSubmit} className="space-y-4">
+                <div className="space-y-3.5">
+                  {/* Doctor Identifier */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      Doctor / Staff Email or License ID
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="e.g. alex.rivera@hospital.org or MD-88294"
+                        className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl py-2.5 pl-10 pr-3 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* CREDENTIALS SECTION: TOGGLE BETWEEN PASSWORD OR 4-DIGIT PIN */}
+                  <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800 space-y-2.5">
+                    {/* Header with Switch Button */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-200">
+                          {loginMethod === 'password' ? 'Password' : 'Quick 4-Digit PIN'}
+                        </span>
+                        <span className="text-[10px] text-teal-400 font-mono">
+                          {loginMethod === 'password' ? '(Default: doctor123)' : '(Default: 1234)'}
+                        </span>
+                      </div>
+
+                      {/* Click to Toggle Password / PIN in One Section */}
+                      <div className="inline-flex p-0.5 bg-slate-900 border border-slate-700/80 rounded-lg text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginMethod('password');
+                            setError(null);
+                          }}
+                          className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                            loginMethod === 'password'
+                              ? 'bg-teal-600 text-white shadow-2xs'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <Lock className="w-3 h-3" />
+                          <span>Password</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginMethod('pin');
+                            setError(null);
+                          }}
+                          className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                            loginMethod === 'pin'
+                              ? 'bg-teal-600 text-white shadow-2xs'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <KeyRound className="w-3 h-3" />
+                          <span>PIN</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Input based on selected method */}
+                    {loginMethod === 'password' ? (
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter doctor password"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pl-10 pr-10 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <KeyRound className="w-4 h-4 text-teal-400 absolute left-3.5 top-3" />
+                          <input
+                            type="password"
+                            maxLength={4}
+                            required
+                            value={doctorPin}
+                            onChange={(e) => setDoctorPin(e.target.value.replace(/\D/g, ''))}
+                            placeholder="Enter 4-digit PIN (e.g. 1234)"
+                            className="w-full bg-slate-900 border border-teal-600/50 rounded-xl py-2.5 pl-10 pr-10 text-sm tracking-widest text-center text-teal-300 placeholder-slate-500 focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-colors font-mono"
+                          />
+                        </div>
+
+                        {/* Quick PIN helper buttons */}
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+                          <span>Standard doctor PIN is <strong className="text-teal-300 font-mono">1234</strong></span>
+                          <button
+                            type="button"
+                            onClick={() => setDoctorPin('1234')}
+                            className="text-teal-400 hover:underline cursor-pointer font-semibold"
+                          >
+                            Fill 1234
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <label className="flex items-center gap-2 text-slate-400 hover:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="rounded bg-slate-950 border-slate-700 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5"
+                    />
+                    <span>Remember on this workstation</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('register')}
+                    className="text-teal-400 hover:text-teal-300 font-semibold cursor-pointer"
+                  >
+                    Need an account?
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs shadow-lg shadow-teal-950/40 transition-all cursor-pointer"
+                >
+                  <span>{isSubmitting ? 'Authenticating Doctor...' : `Sign In with ${loginMethod === 'password' ? 'Password' : '4-Digit PIN'}`}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+            )}
+
+            {/* TAB 2: DOCTOR REGISTRATION */}
+            {activeTab === 'register' && (
+              <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Doctor Full Name & Credentials <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="e.g. Dr. Alexander Vance, MD"
+                    className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3.5 py-2 text-xs focus:outline-hidden focus:border-teal-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Clinical Role <span className="text-red-400">*</span>
+                    </label>
+                    <select
+                      value={regRole}
+                      onChange={(e) => setRegRole(e.target.value as UserRole)}
+                      className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-teal-500"
+                    >
+                      <option value="ATTENDING_PHYSICIAN">Attending Physician / Consultant</option>
+                      <option value="RESIDENT_DOCTOR">Resident Medical Officer</option>
+                      <option value="WARD_NURSE">Ward Staff Nurse / Sister</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Medical License ID <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regLicense}
+                      onChange={(e) => setRegLicense(e.target.value)}
+                      placeholder="e.g. MD-90184"
+                      className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-teal-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Ward / Department <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regDepartment}
+                      onChange={(e) => setRegDepartment(e.target.value)}
+                      placeholder="e.g. Ward 3B Nephrology"
+                      className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-teal-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Clinical Specialty
+                    </label>
+                    <input
+                      type="text"
+                      value={regSpecialty}
+                      onChange={(e) => setRegSpecialty(e.target.value)}
+                      placeholder="e.g. Acute Renal Care"
+                      className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-teal-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Clinical Email <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      required
+                      placeholder="doctor@hospital.org"
+                      className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-teal-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Password <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      required
+                      placeholder="Min 6 chars"
+                      className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs focus:outline-hidden focus:border-teal-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Quick Bedside 4-Digit PIN
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={regPin}
+                    onChange={(e) => setRegPin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="1234"
+                    className="w-full bg-slate-950 border border-slate-700/80 text-white rounded-xl px-3.5 py-2 text-xs focus:outline-hidden focus:border-teal-500"
+                  />
+                </div>
+
+                {error && (
+                  <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-900/30 transition-all text-xs cursor-pointer mt-2"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Submit Doctor Registration for Admin Approval</span>
+                </button>
+              </form>
+            )}
+
+            {/* TAB 3: ADMIN LOGIN (REPLACING QUICK PIN) */}
+            {activeTab === 'admin' && (
+              <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
+                {/* Admin Header Box */}
+                <div className="bg-slate-950/90 border border-teal-500/30 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 border border-teal-500/50 flex items-center justify-center text-teal-300 font-bold">
+                      <Shield className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-black text-white">Clinical Admin Portal</h3>
+                        <span className="text-[9px] font-bold uppercase bg-teal-950 text-teal-300 px-2 py-0.5 rounded border border-teal-800">
+                          Governance
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">Chief Medical Officer & Hospital Administration</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-300 flex items-center justify-between">
+                    <span>Admin Profile: <strong className="text-white">Dr. William Bradley, MD</strong></span>
+                    <span className="text-teal-400 font-mono">admin@hospital.org</span>
+                  </div>
+                </div>
+
+                {/* Admin Credential Input */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                      Administrator Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        type="email"
+                        required
+                        value={adminEmail}
+                        onChange={(e) => setAdminEmail(e.target.value)}
+                        placeholder="admin@hospital.org"
+                        className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl py-2.5 pl-10 pr-3 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Admin Password or PIN Switcher */}
+                  <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-200">
+                        {adminAuthMethod === 'password' ? 'Admin Password' : 'Admin Master PIN'}
+                      </span>
+                      
+                      <div className="inline-flex p-0.5 bg-slate-900 border border-slate-700/80 rounded-lg text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setAdminAuthMethod('password')}
+                          className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                            adminAuthMethod === 'password'
+                              ? 'bg-teal-600 text-white shadow-2xs'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <Lock className="w-3 h-3" />
+                          <span>Password (admin123)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdminAuthMethod('pin')}
+                          className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                            adminAuthMethod === 'pin'
+                              ? 'bg-teal-600 text-white shadow-2xs'
+                              : 'text-slate-400 hover:text-slate-200'
+                          }`}
+                        >
+                          <KeyRound className="w-3 h-3" />
+                          <span>Master PIN (9999)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {adminAuthMethod === 'password' ? (
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <input
+                          type={showAdminPassword ? 'text' : 'password'}
+                          required
+                          value={adminPassword}
+                          onChange={(e) => setAdminPassword(e.target.value)}
+                          placeholder="Enter admin password (admin123)"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pl-10 pr-10 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminPassword(!showAdminPassword)}
+                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                        >
+                          {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <KeyRound className="w-4 h-4 text-teal-400 absolute left-3.5 top-3" />
+                        <input
+                          type="password"
+                          maxLength={4}
+                          required
+                          value={adminPin}
+                          onChange={(e) => setAdminPin(e.target.value.replace(/\D/g, ''))}
+                          placeholder="Master PIN: 9999"
+                          className="w-full bg-slate-900 border border-teal-600/50 rounded-xl py-2.5 pl-10 pr-10 text-sm tracking-widest text-center text-teal-300 placeholder-slate-500 focus:outline-hidden focus:border-teal-400 font-mono"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-teal-700 to-slate-800 hover:from-teal-600 hover:to-slate-700 border border-teal-500/40 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs shadow-lg shadow-teal-950/40 transition-all cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-teal-300" />
+                  <span>{isSubmitting ? 'Authenticating Admin...' : 'Sign In as Clinical Administrator'}</span>
+                  <ArrowRight className="w-4 h-4 ml-auto" />
+                </button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => handleDemoSelect(DEFAULT_USERS[0], 'admin123')}
+                    className="text-xs text-teal-400 hover:text-teal-300 underline font-semibold cursor-pointer"
+                  >
+                    Direct 1-Click Clinical Admin Access →
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Quick Demo Logins Footer Bar */}
+            <div className="pt-3.5 border-t border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold">
+                <span className="flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                  <span>1-Click Test Accounts:</span>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleDemoSelect(DEFAULT_USERS[0], 'admin123')}
+                  className="p-2 bg-slate-950 hover:bg-slate-800/90 border border-teal-500/40 rounded-xl text-left transition-all group cursor-pointer"
+                >
+                  <div className="text-[11px] font-bold text-teal-300 group-hover:text-white truncate">
+                    Dr. Bradley
+                  </div>
+                  <div className="text-[10px] text-teal-400 font-semibold truncate">Clinical Admin</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDemoSelect(DEFAULT_USERS[1], 'doctor123')}
+                  className="p-2 bg-slate-950 hover:bg-slate-800/90 border border-slate-800 hover:border-teal-500/50 rounded-xl text-left transition-all group cursor-pointer"
+                >
+                  <div className="text-[11px] font-bold text-slate-200 group-hover:text-teal-200 truncate">
+                    Dr. Rivera
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">Doctor (SaaS)</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDemoSelect(DEFAULT_USERS[2], 'doctor123')}
+                  className="p-2 bg-slate-950 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 rounded-xl text-left transition-all group cursor-pointer"
+                >
+                  <div className="text-[11px] font-bold text-blue-300 group-hover:text-blue-200 truncate">
+                    Dr. Jenkins
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">Resident (SaaS)</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDemoSelect(DEFAULT_USERS[4], 'doctor123')}
+                  className="p-2 bg-slate-950 hover:bg-slate-800/90 border border-amber-900/50 hover:border-amber-500/50 rounded-xl text-left transition-all group cursor-pointer"
+                >
+                  <div className="text-[11px] font-bold text-amber-400 group-hover:text-amber-300 truncate">
+                    Dr. Thorne
+                  </div>
+                  <div className="text-[10px] text-amber-500 font-semibold truncate">Pending Approval</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Footer Info */}
       <footer className="p-4 text-center text-xs text-slate-500 relative z-10 border-t border-slate-900 bg-slate-950/60">
-        <p>AI Ward Round Clinical Decision Assistant • Strictly for authorized medical personnel • Data encrypted locally</p>
+        <p>AI Ward Round Clinical SaaS Platform • Medical License Verification & Admin Approvals Active</p>
       </footer>
     </div>
   );

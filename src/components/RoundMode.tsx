@@ -19,7 +19,7 @@ interface RoundModeProps {
   patients: Patient[];
   onClose: () => void;
   onOpenAddRoundNote: (patient: Patient) => void;
-  onOpenCapture: () => void;
+  onOpenCapture: (patient?: Patient) => void;
   onSelectPatient: (patient: Patient) => void;
 }
 
@@ -32,7 +32,11 @@ export const RoundMode: React.FC<RoundModeProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = React.useState(0);
 
-  // Sort patients by priority so critical ones are seen first during ward round
+  // Sort active patients by priority so critical ones are seen first during ward round
+  const activePatients = React.useMemo(() => {
+    return patients.filter((p) => p.status !== 'DISCHARGED');
+  }, [patients]);
+
   const sortedPatients = React.useMemo(() => {
     const priorityRank: Record<string, number> = {
       CRITICAL: 1,
@@ -40,8 +44,8 @@ export const RoundMode: React.FC<RoundModeProps> = ({
       REVIEW: 3,
       STABLE: 4,
     };
-    return [...patients].sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
-  }, [patients]);
+    return [...activePatients].sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
+  }, [activePatients]);
 
   const patient = sortedPatients[currentIndex] || sortedPatients[0];
 
@@ -103,114 +107,141 @@ export const RoundMode: React.FC<RoundModeProps> = ({
       </div>
 
       {/* Main Single Patient Focus Flashcard */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-4xl mx-auto w-full space-y-4">
-        {/* Patient Identity Bar */}
-        <div className={`p-5 rounded-2xl border shadow-xs flex flex-wrap items-center justify-between gap-4 bg-white ${
-          isCritical ? 'border-red-300' :
-          isAction ? 'border-amber-300' :
-          'border-slate-200'
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 max-w-4xl mx-auto w-full space-y-4">
+        <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${
+          isCritical
+            ? 'border-red-300 ring-1 ring-red-200'
+            : isAction
+            ? 'border-amber-300'
+            : 'border-slate-200'
         }`}>
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 bg-slate-100 text-teal-800 font-mono font-black text-base rounded-lg border border-slate-200">
-                {patient.bed}
-              </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
-                {patient.name}
-              </h1>
-              <span className="text-sm font-normal text-slate-500">
-                ({patient.age}Y / {patient.sex})
-              </span>
+          {/* Card Header: 2-column layout (Left: Patient Name & ID, Right: Bed No & Condition) */}
+          <div className="p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-start justify-between gap-3">
+              {/* Left Column: Patient Name, Age/Sex, ID & Ward */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <h1 className="font-extrabold text-xl sm:text-2xl text-slate-900 leading-snug">
+                    {patient.name}
+                  </h1>
+                  <span className="text-sm text-slate-500 font-semibold shrink-0">
+                    ({patient.age}{patient.sex[0]})
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 font-mono flex items-center gap-1.5 mt-1 flex-wrap">
+                  <span className="font-semibold text-slate-600">ID: {patient.patientId}</span>
+                  <span>•</span>
+                  <span>Ward: {patient.ward.split('-')[0]}</span>
+                  {patient.consultant && (
+                    <>
+                      <span>•</span>
+                      <span className="text-slate-600 font-sans">Dr. {patient.consultant.replace(/^Dr\.\s*/i, '')}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Bed Number & Clinical Condition / Priority */}
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                {/* Bed Badge */}
+                <span className="px-3 py-0.5 bg-slate-100 border border-slate-300 text-teal-900 font-mono font-black text-xs sm:text-sm rounded-lg shadow-2xs">
+                  {patient.bed}
+                </span>
+
+                {/* Priority / Condition Badge */}
+                <div className={`px-2.5 py-0.5 rounded-lg text-xs font-extrabold flex items-center gap-1 shrink-0 whitespace-nowrap ${
+                  isCritical ? 'bg-red-50 text-red-700 border border-red-200 animate-pulse' :
+                  isAction ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                  patient.priority === 'REVIEW' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                  'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                }`}>
+                  <span>
+                    {isCritical ? '🔴 CRITICAL' :
+                     isAction ? '🟠 ACTION REQ.' :
+                     patient.priority === 'REVIEW' ? '🟡 REVIEW' :
+                     '🟢 STABLE'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-slate-600 font-mono mt-1">
-              ID: {patient.patientId} • Ward: {patient.ward} • Consultant: {patient.consultant}
+
+            {/* LAST UPDATE / CLINICAL TREND (Highlighted Box) */}
+            <div className={`p-3.5 rounded-xl border text-xs font-medium space-y-1.5 ${
+              isCritical
+                ? 'bg-red-50/80 border-red-200 text-red-900'
+                : isAction
+                ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                : 'bg-slate-50 border-slate-200 text-slate-900'
+            }`}>
+              <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                <span>LAST UPDATE / CLINICAL TREND</span>
+              </div>
+              <div className="font-bold text-slate-900 text-sm sm:text-base leading-relaxed">
+                {patient.lastUpdate}
+              </div>
+            </div>
+
+            {/* Clinical Diagnosis & Active Problems */}
+            <div className="space-y-1">
+              <div className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
+                Primary Diagnosis
+              </div>
+              <p className="text-sm font-bold text-slate-900">
+                {patient.primaryDiagnosis}
+              </p>
+              {patient.activeProblems && patient.activeProblems.length > 0 && (
+                <div className="pt-1">
+                  <ul className="flex flex-wrap gap-1.5 text-xs text-slate-700">
+                    {patient.activeProblems.map((prob, idx) => (
+                      <li key={idx} className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px] font-medium">
+                        • {prob}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Pending Investigations */}
+            {patient.pendingInvestigations && patient.pendingInvestigations.length > 0 ? (
+              <div className="space-y-1">
+                <div className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
+                  Pending Labs & Investigations:
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {patient.pendingInvestigations.map((inv, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-amber-50 border border-amber-200 text-amber-900 text-xs px-2.5 py-1 rounded-lg font-mono font-semibold flex items-center gap-1 shadow-2xs"
+                    >
+                      ⏳ {inv}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Today's Focus / Clinical Plan */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-1.5">
+              <div className="text-teal-800 font-bold uppercase tracking-wider text-[11px]">Today's Clinical Plan & Focus:</div>
+              <p className="text-slate-800 text-xs sm:text-sm font-medium whitespace-pre-line leading-relaxed">
+                {patient.todayPlan || patient.todayPriority}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className={`px-4 py-1.5 rounded-xl font-bold text-xs border ${
-              isCritical ? 'bg-red-50 text-red-800 border-red-300 animate-pulse' :
-              isAction ? 'bg-amber-50 text-amber-800 border-amber-300' :
-              'bg-emerald-50 text-emerald-800 border-emerald-300'
-            }`}>
-              {patient.priority} PRIORITY
-            </span>
-
+          {/* Quick Header Action Link */}
+          <div className="bg-slate-50 px-4 py-2.5 border-t border-slate-200 flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-mono text-[11px]">Admitted: {patient.admissionDate}</span>
             <button
               onClick={() => onSelectPatient(patient)}
-              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-teal-800 border border-slate-300 rounded-xl text-xs font-bold shadow-2xs"
+              className="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1 hover:underline cursor-pointer"
             >
-              Full Profile →
+              <span>View Full EMR Profile</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
-
-        {/* 🔴 LAST UPDATE (Prominent Top Highlight!) */}
-        <div className={`p-5 rounded-2xl border shadow-xs space-y-2 ${
-          isCritical ? 'bg-red-50/90 border-red-200 text-red-950' :
-          isAction ? 'bg-amber-50/90 border-amber-200 text-amber-950' :
-          'bg-white border-slate-200 text-slate-900'
-        }`}>
-          <div className="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-600" />
-            <span>🔴 LAST UPDATE (Important Clinical Change)</span>
-          </div>
-          <p className="text-lg sm:text-xl font-black leading-snug">
-            {patient.lastUpdate}
-          </p>
-        </div>
-
-        {/* Clinical Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Working Diagnosis & Active Problems */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <span>Working Diagnosis & Problems</span>
-            </div>
-            <div className="font-extrabold text-teal-800 text-base">
-              {patient.primaryDiagnosis}
-            </div>
-            <ul className="space-y-1.5 text-xs text-slate-800">
-              {patient.activeProblems.map((prob, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-teal-600">•</span>
-                  <span className="font-medium">{prob}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Pending Investigations */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Pending Investigations
-            </div>
-            {patient.pendingInvestigations && patient.pendingInvestigations.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {patient.pendingInvestigations.map((inv, idx) => (
-                  <span
-                    key={idx}
-                    className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold"
-                  >
-                    ⏳ {inv}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500 text-xs italic">No urgent investigations pending</p>
-            )}
-          </div>
-        </div>
-
-        {/* Today's Plan */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-          <div className="text-xs font-bold text-teal-800 uppercase tracking-wider">
-            Today's Clinical Plan
-          </div>
-          <p className="text-slate-800 text-sm font-medium whitespace-pre-line leading-relaxed">
-            {patient.todayPlan}
-          </p>
         </div>
       </div>
 
@@ -237,10 +268,11 @@ export const RoundMode: React.FC<RoundModeProps> = ({
             </button>
 
             <button
-              onClick={onOpenCapture}
-              className="flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold px-3 py-2.5 rounded-xl text-xs sm:text-sm transition-colors shadow-2xs"
+              onClick={() => onOpenCapture(patient)}
+              className="flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold px-3 py-2.5 rounded-xl text-xs sm:text-sm transition-colors shadow-2xs cursor-pointer"
+              title="Capture / Upload Medical Document"
             >
-              <Camera className="w-4 h-4" />
+              <Camera className="w-4 h-4 text-teal-700" />
               <span className="hidden sm:inline">Capture Doc</span>
             </button>
           </div>

@@ -25,7 +25,7 @@ export const InvestigationTrends: React.FC<InvestigationTrendsProps> = ({
   const availableParameters = React.useMemo(() => {
     if (!selectedPatient) return [];
     const set = new Set<string>();
-    selectedPatient.investigations.forEach((inv) => set.add(inv.testName));
+    (selectedPatient.investigations || []).forEach((inv) => set.add(inv.testName));
     if (set.size === 0) set.add('Creatinine');
     return Array.from(set);
   }, [selectedPatient]);
@@ -33,7 +33,7 @@ export const InvestigationTrends: React.FC<InvestigationTrendsProps> = ({
   // Chronological parameter data (always ascending for chart left-to-right timeline)
   const parameterHistoryAsc = React.useMemo(() => {
     if (!selectedPatient) return [];
-    return selectedPatient.investigations
+    return (selectedPatient.investigations || [])
       .filter((inv) => inv.testName === selectedParameter)
       .sort((a, b) => new Date(`${a.date} ${a.time || '00:00'}`).getTime() - new Date(`${b.date} ${b.time || '00:00'}`).getTime());
   }, [selectedPatient, selectedParameter]);

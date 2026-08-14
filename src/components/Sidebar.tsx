@@ -16,19 +16,23 @@ import {
   LogOut,
   LogIn,
   User,
-  KeyRound
+  KeyRound,
+  ShieldAlert,
+  UserCheck
 } from 'lucide-react';
-import { UserAccount } from '../types';
+import { UserAccount, Patient } from '../types';
 
 export type NavTab = 
   | 'dashboard'
   | 'preround'
   | 'roundmode'
   | 'patients'
+  | 'discharged'
   | 'trends'
   | 'capture'
   | 'dailyround'
   | 'tasks'
+  | 'admin'
   | 'settings';
 
 interface SidebarProps {
@@ -40,12 +44,16 @@ interface SidebarProps {
   pendingTasksCount?: number;
   criticalCount?: number;
   patientsCount?: number;
+  dischargedCount?: number;
   mobileMenuOpen?: boolean;
   onCloseMobileMenu?: () => void;
   currentUser?: UserAccount | null;
   onLockSession?: () => void;
   onLogout?: () => void;
   onOpenSettings?: () => void;
+  patients?: Patient[];
+  selectedPatientId?: string;
+  onSelectPatient?: (patient: Patient) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -56,14 +64,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenRoundMode,
   pendingTasksCount = 0,
   criticalCount = 0,
+  patientsCount = 0,
+  dischargedCount = 0,
   mobileMenuOpen = false,
   onCloseMobileMenu,
   currentUser,
   onLockSession,
   onLogout,
   onOpenSettings,
+  patients = [],
+  selectedPatientId,
+  onSelectPatient,
 }) => {
   const currentTab = activeTab || activeView || 'dashboard';
+
+  const activeInpatients = React.useMemo(() => {
+    return patients.filter((p) => p.status !== 'DISCHARGED');
+  }, [patients]);
 
   const handleSelectTab = (id: NavTab) => {
     if (id === 'roundmode' && typeof onOpenRoundMode === 'function') {
@@ -77,7 +94,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (typeof onViewChange === 'function') {
       let mappedView: string = id;
       if (id === 'preround') mappedView = 'brief';
-      if (id === 'patients') mappedView = 'profile';
+      if (id === 'patients') mappedView = 'patients';
+      if (id === 'discharged') mappedView = 'discharged';
       if (id === 'dailyround') mappedView = 'dashboard';
       onViewChange(mappedView);
     }
@@ -93,7 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const idStr = id as string;
     if (tabStr === idStr) return true;
     if ((tabStr === 'brief' || tabStr === 'preround') && (idStr === 'preround' || idStr === 'brief')) return true;
-    if ((tabStr === 'profile' || tabStr === 'patients') && (idStr === 'patients' || idStr === 'profile')) return true;
+    if (tabStr === 'discharged' && idStr === 'discharged') return true;
     return false;
   };
 
@@ -101,11 +119,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'preround', label: 'Pre-Round Brief', icon: ClipboardList, badge: criticalCount > 0 ? `${criticalCount} Crit` : undefined, badgeColor: 'bg-red-600 text-white' },
     { id: 'roundmode', label: 'Round Mode', icon: Zap, badge: '⚡ Bedside', badgeColor: 'bg-amber-600 text-white' },
-    { id: 'patients', label: 'Patients List', icon: Users },
+    { id: 'patients', label: 'Patients List', icon: Users, badge: activeInpatients.length > 0 ? activeInpatients.length : undefined, badgeColor: 'bg-teal-600 text-white' },
+    { id: 'discharged', label: 'Discharge List', icon: LogOut, badge: dischargedCount > 0 ? dischargedCount : undefined, badgeColor: 'bg-slate-800 text-slate-300 border border-slate-700' },
     { id: 'trends', label: 'Investigation Trends', icon: TrendingUp },
     { id: 'capture', label: 'Capture / OCR Review', icon: Camera },
     { id: 'dailyround', label: 'Daily Round Note', icon: FileCheck2 },
     { id: 'tasks', label: 'Today\'s Tasks', icon: CheckSquare, badge: pendingTasksCount > 0 ? pendingTasksCount : undefined, badgeColor: 'bg-teal-600 text-white' },
+    ...(currentUser?.role === 'CLINICAL_ADMIN' ? [{ id: 'admin' as NavTab, label: 'Admin & Approvals', icon: UserCheck, badge: 'Admin', badgeColor: 'bg-indigo-600 text-white' }] : []),
     { id: 'settings', label: 'Settings & AI', icon: Settings },
   ];
 
@@ -121,11 +141,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = isTabActive(item.id);
+
             return (
               <button
                 key={item.id}
                 onClick={() => handleSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-teal-600 text-white shadow-xs font-bold'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -262,11 +283,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = isTabActive(item.id);
+
                 return (
                   <button
                     key={item.id}
                     onClick={() => handleSelectTab(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                       isActive
                         ? 'bg-teal-600 text-white shadow-xs font-bold'
                         : 'text-slate-300 hover:bg-slate-800 hover:text-white'

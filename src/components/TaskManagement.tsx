@@ -18,21 +18,26 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
   const [filterCategory, setFilterCategory] = React.useState<TaskCategory | 'ALL'>('ALL');
   const [filterStatus, setFilterStatus] = React.useState<'ALL' | 'PENDING' | 'COMPLETED'>('PENDING');
 
+  // Only active patients for active tasks
+  const activePatients = React.useMemo(() => {
+    return patients.filter((p) => p.status !== 'DISCHARGED');
+  }, [patients]);
+
   // New task form state
-  const [selectedPatientId, setSelectedPatientId] = React.useState<string>(patients[0]?.patientId || '');
+  const [selectedPatientId, setSelectedPatientId] = React.useState<string>(activePatients[0]?.patientId || patients[0]?.patientId || '');
   const [newTaskDesc, setNewTaskDesc] = React.useState('');
   const [newTaskCategory, setNewTaskCategory] = React.useState<TaskCategory>('INVESTIGATION');
 
-  // Aggregate all tasks across patients
+  // Aggregate all tasks across active patients
   const allTasks = React.useMemo(() => {
     const list: { patient: Patient; task: Task }[] = [];
-    patients.forEach((p) => {
-      p.tasks.forEach((t) => {
+    activePatients.forEach((p) => {
+      (p.tasks || []).forEach((t) => {
         list.push({ patient: p, task: t });
       });
     });
     return list;
-  }, [patients]);
+  }, [activePatients]);
 
   const filteredTasks = React.useMemo(() => {
     return allTasks.filter(({ task }) => {
@@ -125,7 +130,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
             onChange={(e) => setSelectedPatientId(e.target.value)}
             className="bg-white text-slate-900 border border-slate-300 rounded-xl px-3 py-2 font-bold focus:outline-none focus:border-teal-600 shadow-2xs"
           >
-            {patients.map((p) => (
+            {activePatients.map((p) => (
               <option key={p.patientId} value={p.patientId}>
                 {p.bed} - {p.name}
               </option>

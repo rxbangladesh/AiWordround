@@ -14,11 +14,27 @@ import { SettingsView } from './components/SettingsView';
 import { DailyRoundModal } from './components/DailyRoundModal';
 import { NewPatientModal } from './components/NewPatientModal';
 import { DischargeModal } from './components/DischargeModal';
+import { DischargeListView } from './components/DischargeListView';
+import { PatientListView } from './components/PatientListView';
 import { LoginScreen } from './components/LoginScreen';
 import { ScreenLockModal } from './components/ScreenLockModal';
+import { AdminConsole } from './components/AdminConsole';
 import { getStoredCurrentUser, saveStoredCurrentUser, DEFAULT_USERS } from './utils/auth';
 
 const LOCAL_STORAGE_KEY = 'ward_round_patients_v3';
+
+const sanitizePatient = (p: any): Patient => ({
+  ...p,
+  activeProblems: Array.isArray(p.activeProblems) ? p.activeProblems : [],
+  differentialDiagnoses: Array.isArray(p.differentialDiagnoses) ? p.differentialDiagnoses : [],
+  pendingInvestigations: Array.isArray(p.pendingInvestigations) ? p.pendingInvestigations : [],
+  dailyRounds: Array.isArray(p.dailyRounds) ? p.dailyRounds : [],
+  investigations: Array.isArray(p.investigations) ? p.investigations : [],
+  medications: Array.isArray(p.medications) ? p.medications : [],
+  documents: Array.isArray(p.documents) ? p.documents : [],
+  clinicalNotes: Array.isArray(p.clinicalNotes) ? p.clinicalNotes : [],
+  tasks: Array.isArray(p.tasks) ? p.tasks : [],
+});
 
 export const App: React.FC = () => {
   // Authentication & Session State
@@ -33,16 +49,16 @@ export const App: React.FC = () => {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map(sanitizePatient);
         }
       }
     } catch (err) {
       console.warn('Failed to parse saved patients from localStorage', err);
     }
-    return INITIAL_PATIENTS;
+    return INITIAL_PATIENTS.map(sanitizePatient);
   });
 
-  const [activeView, setActiveView] = React.useState<'dashboard' | 'brief' | 'profile' | 'trends' | 'capture' | 'tasks' | 'settings'>('dashboard');
+  const [activeView, setActiveView] = React.useState<'dashboard' | 'brief' | 'profile' | 'trends' | 'capture' | 'tasks' | 'admin' | 'discharged' | 'settings'>('dashboard');
   const [selectedPatient, setSelectedPatient] = React.useState<Patient | null>(patients[0] || null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedWard, setSelectedWard] = React.useState('ALL');
@@ -144,7 +160,11 @@ export const App: React.FC = () => {
     setDailyRoundModalPatient(patient);
   };
 
-  const handleOpenCapture = () => {
+  const handleOpenCapture = (patient?: Patient) => {
+    if (patient) {
+      setSelectedPatient(patient);
+    }
+    setRoundModeOpen(false);
     setActiveView('capture');
   };
 
@@ -157,12 +177,16 @@ export const App: React.FC = () => {
             ...roundNote,
             id: `rd-${Date.now()}`,
           };
-          return {
+          const updatedPt: Patient = {
             ...p,
             lastUpdate: `[New Round Note ${newRound.date}] Assessment: ${newRound.assessment}`,
             todayPlan: newRound.plan,
             dailyRounds: [newRound, ...p.dailyRounds],
           };
+          if (selectedPatient?.patientId === patientId) {
+            setSelectedPatient(updatedPt);
+          }
+          return updatedPt;
         }
         return p;
       })
@@ -460,9 +484,10 @@ export const App: React.FC = () => {
         <Sidebar
           activeView={activeView}
           onViewChange={(v) => setActiveView(v as any)}
-          patientsCount={patients.length}
-          criticalCount={patients.filter((p) => p.priority === 'CRITICAL').length}
-          pendingTasksCount={patients.reduce((acc, p) => acc + (p.tasks ? p.tasks.filter((t) => t.status === 'PENDING').length : 0), 0)}
+          patientsCount={patients.filter((p) => p.status !== 'DISCHARGED').length}
+          dischargedCount={patients.filter((p) => p.status === 'DISCHARGED').length}
+          criticalCount={patients.filter((p) => p.status !== 'DISCHARGED' && p.priority === 'CRITICAL').length}
+          pendingTasksCount={patients.filter((p) => p.status !== 'DISCHARGED').reduce((acc, p) => acc + (p.tasks ? p.tasks.filter((t) => t.status === 'PENDING').length : 0), 0)}
           onOpenRoundMode={() => setRoundModeOpen(true)}
           mobileMenuOpen={mobileMenuOpen}
           onCloseMobileMenu={() => setMobileMenuOpen(false)}
@@ -470,19 +495,33 @@ export const App: React.FC = () => {
           onLockSession={() => setIsSessionLocked(true)}
           onLogout={handleLogout}
           onOpenSettings={() => setActiveView('settings')}
+          patients={patients}
+          selectedPatientId={selectedPatient?.patientId}
+          onSelectPatient={handleSelectPatient}
         />
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto pb-24 md:pb-6">
           {activeView === 'dashboard' && (
             <Dashboard
+              currentUser={currentUser}
               patients={patients}
               onSelectPatient={handleSelectPatient}
               onOpenPreRoundBrief={() => setActiveView('brief')}
               onOpenRoundMode={() => setRoundModeOpen(true)}
-              onOpenCapture={() => setActiveView('capture')}
-              onOpenAddPatient={() => setNewPatientModalOpen(true)}
+              onOpenCapture={handleOpenCapture}
               onOpenAddRoundNote={handleOpenAddRoundNote}
+              onOpenDischargeList={() => setActiveView('discharged')}
+            />
+          )}
+
+          {activeView === 'patients' && (
+            <PatientListView
+              patients={patients}
+              onSelectPatient={handleSelectPatient}
+              onOpenAddRoundNote={handleOpenAddRoundNote}
+              onOpenCapture={handleOpenCapture}
+              onOpenRoundMode={() => setRoundModeOpen(true)}
             />
           )}
 
@@ -512,6 +551,16 @@ export const App: React.FC = () => {
             />
           )}
 
+          {activeView === 'discharged' && (
+            <DischargeListView
+              patients={patients}
+              currentUser={currentUser}
+              onSelectPatient={handleSelectPatient}
+              onReadmitPatient={handleReadmitPatient}
+              onNavigateToDashboard={() => setActiveView('dashboard')}
+            />
+          )}
+
           {activeView === 'trends' && (
             <InvestigationTrends
               patients={patients}
@@ -523,6 +572,8 @@ export const App: React.FC = () => {
           {activeView === 'capture' && (
             <CaptureUpload
               patients={patients}
+              initialPatientId={selectedPatient?.patientId}
+              onBackToProfile={() => setActiveView('profile')}
               onSaveExtractedData={handleSaveExtractedData}
             />
           )}
@@ -533,6 +584,21 @@ export const App: React.FC = () => {
               onToggleTask={handleToggleTask}
               onAddTask={handleAddTask}
               onSelectPatient={handleSelectPatient}
+            />
+          )}
+
+          {activeView === 'admin' && (
+            <AdminConsole
+              currentUser={currentUser || undefined}
+              patients={patients}
+              onSwitchUser={(user) => {
+                handleLoginSuccess(user);
+              }}
+              onNavigateToDashboard={() => setActiveView('dashboard')}
+              onSelectDoctor={(doc) => {
+                handleLoginSuccess(doc);
+                setActiveView('dashboard');
+              }}
             />
           )}
 
@@ -578,6 +644,7 @@ export const App: React.FC = () => {
 
       {newPatientModalOpen && (
         <NewPatientModal
+          currentUser={currentUser}
           onClose={() => setNewPatientModalOpen(false)}
           onAddPatient={handleAddPatient}
         />

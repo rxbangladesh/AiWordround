@@ -4,14 +4,14 @@ import { Patient, DischargeData } from '../types';
 
 interface DischargeModalProps {
   patient: Patient;
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   onConfirmDischarge: (patientId: string, dischargeData: DischargeData) => void;
 }
 
 export const DischargeModal: React.FC<DischargeModalProps> = ({
   patient,
-  isOpen,
+  isOpen = true,
   onClose,
   onConfirmDischarge,
 }) => {
