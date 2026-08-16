@@ -90,6 +90,30 @@ export const NewPatientModal: React.FC<NewPatientModalProps> = ({
     onClose();
   };
 
+  if (currentUser?.role === 'ADMIN') {
+    return (
+      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full shadow-2xl p-6 text-slate-900 space-y-4 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+            <Stethoscope className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-slate-900">Clinical Admission Restricted</h3>
+            <p className="text-xs text-slate-600 mt-1">
+              Administrator accounts have Read-Only governance over clinical records and hospital rosters. Direct patient admissions and modifications are reserved for active clinical staff.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white border border-slate-200 rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden text-slate-900 space-y-4 p-6">

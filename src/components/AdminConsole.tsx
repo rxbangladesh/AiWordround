@@ -28,6 +28,7 @@ interface AdminConsoleProps {
   onSwitchUser?: (user: UserAccount) => void;
   onNavigateToDashboard?: () => void;
   onSelectDoctor?: (user: UserAccount) => void;
+  onSelectPatient?: (patient: Patient) => void;
 }
 
 export const AdminConsole: React.FC<AdminConsoleProps> = ({
@@ -36,11 +37,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   onSwitchUser,
   onNavigateToDashboard,
   onSelectDoctor,
+  onSelectPatient,
 }) => {
   const [users, setUsers] = React.useState<UserAccount[]>(() => getStoredUsers());
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = React.useState<string>('ALL');
   const [statusFilter, setStatusFilter] = React.useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [patientSearchTerm, setPatientSearchTerm] = React.useState('');
+  const [patientPriorityFilter, setPatientPriorityFilter] = React.useState<string>('ALL');
+  const [patientWardFilter, setPatientWardFilter] = React.useState<string>('ALL');
   const [actionSuccessMessage, setActionSuccessMessage] = React.useState<string | null>(null);
 
   // Quick Add Doctor Modal State
@@ -64,7 +69,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
   // Handle Doctor Approval
   const handleApprove = (user: UserAccount) => {
-    const res = approveDoctor(user.id, currentUser.name);
+    const res = approveDoctor(user.id, currentUser?.name || 'Dr. William Bradley, MD (Clinical Admin)');
     if (res.success) {
       refreshUsers();
       showNotification(`✓ Doctor account approved: ${user.name} now has full clinical dashboard access.`);
@@ -290,8 +295,17 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${user.avatarColor || 'from-rose-600 to-red-600'} text-white font-black flex items-center justify-center text-sm shrink-0 shadow-xs`}>
-                      {user.name.charAt(0)}
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${user.avatarColor || 'from-rose-600 to-red-600'} text-white font-black flex items-center justify-center text-sm shrink-0 shadow-xs overflow-hidden`}>
+                      {user.avatarUrl ? (
+                        <img 
+                          src={user.avatarUrl} 
+                          alt={user.name} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span>{user.name.charAt(0)}</span>
+                      )}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -411,8 +425,17 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${user.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs`}>
-                          {user.name.charAt(0)}
+                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${user.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs overflow-hidden`}>
+                          {user.avatarUrl ? (
+                            <img 
+                              src={user.avatarUrl} 
+                              alt={user.name} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <span>{user.name.charAt(0)}</span>
+                          )}
                         </div>
                         <div>
                           <div className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -507,6 +530,179 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* SECTION 3: ALL INPATIENT MEDICAL DIRECTORY & GOVERNANCE AUDIT */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-teal-700" />
+              <h2 className="text-base font-bold text-slate-900">
+                Hospital Inpatient Records & Medical Governance Audit
+              </h2>
+              <span className="bg-teal-100 text-teal-800 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-teal-200">
+                Read-Only Audit Mode
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Administrators have non-destructive read access across all patient charts, lab trend charts, and OCR-extracted documents.
+            </p>
+          </div>
+
+          {/* Search & Filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={patientSearchTerm}
+                onChange={(e) => setPatientSearchTerm(e.target.value)}
+                placeholder="Search patient, bed, diagnosis..."
+                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-teal-500 w-44 sm:w-56"
+              />
+            </div>
+
+            <select
+              value={patientPriorityFilter}
+              onChange={(e) => setPatientPriorityFilter(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:border-teal-500"
+            >
+              <option value="ALL">All Priorities</option>
+              <option value="CRITICAL">🔴 Critical Only</option>
+              <option value="ACTION">🟡 Action Required</option>
+              <option value="REVIEW">🔵 Review</option>
+              <option value="STABLE">🟢 Stable</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Inpatient Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/50">
+                <th className="py-3 px-3">Bed & Patient</th>
+                <th className="py-3 px-3">Clinical Priority</th>
+                <th className="py-3 px-3">Working Diagnosis</th>
+                <th className="py-3 px-3">Active Problems</th>
+                <th className="py-3 px-3">Pending Labs</th>
+                <th className="py-3 px-3">Attending Consultant</th>
+                <th className="py-3 px-3 text-right">EHR Audit</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {(patients || [])
+                .filter((p) => {
+                  const matchSearch =
+                    p.name.toLowerCase().includes(patientSearchTerm.toLowerCase()) ||
+                    p.bedNumber.toLowerCase().includes(patientSearchTerm.toLowerCase()) ||
+                    p.primaryDiagnosis.toLowerCase().includes(patientSearchTerm.toLowerCase()) ||
+                    p.ward.toLowerCase().includes(patientSearchTerm.toLowerCase()) ||
+                    (p.consultant && p.consultant.toLowerCase().includes(patientSearchTerm.toLowerCase()));
+                  const matchPriority = patientPriorityFilter === 'ALL' || p.priority === patientPriorityFilter;
+                  return matchSearch && matchPriority;
+                })
+                .map((patient) => {
+                  const isDischarged = patient.status === 'DISCHARGED';
+                  return (
+                    <tr key={patient.patientId} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {patient.bedNumber}
+                          </span>
+                          <div>
+                            <span className="font-bold text-slate-900 block">{patient.name}</span>
+                            <span className="text-[11px] text-slate-500">{patient.age}y • {patient.gender} • {patient.ward}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3">
+                        {isDischarged ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300">
+                            DISCHARGED
+                          </span>
+                        ) : patient.priority === 'CRITICAL' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-300 flex items-center gap-1 w-fit">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span>
+                            CRITICAL
+                          </span>
+                        ) : patient.priority === 'ACTION' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 w-fit">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                            ACTION
+                          </span>
+                        ) : patient.priority === 'REVIEW' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-300">
+                            REVIEW
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            STABLE
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3 px-3 max-w-[200px]">
+                        <span className="font-bold text-slate-800 truncate block">
+                          {patient.primaryDiagnosis}
+                        </span>
+                        <span className="text-[10px] text-slate-500 truncate block">
+                          {patient.lastUpdate}
+                        </span>
+                      </td>
+
+                      <td className="py-3 px-3 max-w-[180px]">
+                        <div className="flex flex-wrap gap-1">
+                          {(patient.activeProblems || []).slice(0, 2).map((prob, idx) => (
+                            <span key={idx} className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-200 truncate max-w-[140px]">
+                              {prob}
+                            </span>
+                          ))}
+                          {(patient.activeProblems || []).length > 2 && (
+                            <span className="text-[10px] text-slate-500 font-bold">
+                              +{(patient.activeProblems || []).length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3">
+                        {patient.pendingInvestigations && patient.pendingInvestigations.length > 0 ? (
+                          <span className="text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md font-bold text-[11px] inline-flex items-center gap-1">
+                            <span>⏳</span>
+                            <span>{patient.pendingInvestigations.length} Pending</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-medium text-[11px]">None</span>
+                        )}
+                      </td>
+
+                      <td className="py-3 px-3">
+                        <span className="font-semibold text-slate-800 block">{patient.consultant}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">ID: {patient.patientId}</span>
+                      </td>
+
+                      <td className="py-3 px-3 text-right">
+                        {onSelectPatient && (
+                          <button
+                            onClick={() => onSelectPatient(patient)}
+                            className="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 font-bold text-xs py-1.5 px-3 rounded-xl inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                            title="Inspect full medical record in Read-Only Audit Mode"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-teal-600" />
+                            <span>View Full EHR</span>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>

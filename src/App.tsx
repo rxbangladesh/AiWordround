@@ -94,6 +94,10 @@ export const App: React.FC = () => {
 
   // Handle Patient Discharge
   const handleConfirmDischarge = (patientId: string, dischargeData: DischargeData) => {
+    if (currentUser?.role === 'ADMIN') {
+      console.warn('ADMIN is restricted from discharging patients.');
+      return;
+    }
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -129,6 +133,10 @@ export const App: React.FC = () => {
 
   // Handle Patient Re-Admission
   const handleReadmitPatient = (patientId: string) => {
+    if (currentUser?.role === 'ADMIN') {
+      console.warn('ADMIN is restricted from re-admitting patients.');
+      return;
+    }
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -157,6 +165,7 @@ export const App: React.FC = () => {
   };
 
   const handleOpenAddRoundNote = (patient: Patient) => {
+    if (currentUser?.role === 'ADMIN') return;
     setDailyRoundModalPatient(patient);
   };
 
@@ -170,6 +179,10 @@ export const App: React.FC = () => {
 
   // Add Daily Round Note
   const handleSaveRound = (patientId: string, roundNote: Omit<DailyRound, 'id'>) => {
+    if (currentUser?.role === 'ADMIN') {
+      console.warn('ADMIN is restricted from saving round notes.');
+      return;
+    }
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -202,6 +215,10 @@ export const App: React.FC = () => {
     extractedInvestigations: InvestigationResult[],
     fulfilledPendingItems: string[] = []
   ) => {
+    if (currentUser?.role === 'ADMIN') {
+      console.warn('ADMIN is restricted from attaching OCR extraction data.');
+      return;
+    }
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -247,6 +264,7 @@ export const App: React.FC = () => {
 
   // Add Pending Investigation
   const handleAddPendingInvestigation = (patientId: string, testName: string) => {
+    if (currentUser?.role === 'ADMIN') return;
     const trimmed = testName.trim();
     if (!trimmed) return;
 
@@ -271,6 +289,7 @@ export const App: React.FC = () => {
 
   // Remove Pending Investigation
   const handleRemovePendingInvestigation = (patientId: string, testName: string) => {
+    if (currentUser?.role === 'ADMIN') return;
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -294,6 +313,7 @@ export const App: React.FC = () => {
     pendingTestName: string,
     resultData: Omit<InvestigationResult, 'id'>
   ) => {
+    if (currentUser?.role === 'ADMIN') return;
     const newInvResult: InvestigationResult = {
       id: `inv-${Date.now()}`,
       ...resultData,
@@ -328,6 +348,7 @@ export const App: React.FC = () => {
 
   // Toggle Task Status
   const handleToggleTask = (patientId: string, taskId: string) => {
+    if (currentUser?.role === 'ADMIN') return;
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -347,6 +368,7 @@ export const App: React.FC = () => {
 
   // Add Task
   const handleAddTask = (patientId: string, description: string, category: TaskCategory) => {
+    if (currentUser?.role === 'ADMIN') return;
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -371,6 +393,7 @@ export const App: React.FC = () => {
 
   // Add Clinical Note
   const handleAddClinicalNote = (patientId: string, noteData: { content: string; author: string; category: any; isPinned?: boolean }) => {
+    if (currentUser?.role === 'ADMIN') return;
     const newNote = {
       id: `cn-${Date.now()}`,
       date: new Date().toISOString().replace('T', ' ').slice(0, 16),
@@ -394,6 +417,7 @@ export const App: React.FC = () => {
 
   // Delete Clinical Note
   const handleDeleteClinicalNote = (patientId: string, noteId: string) => {
+    if (currentUser?.role === 'ADMIN') return;
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -411,6 +435,7 @@ export const App: React.FC = () => {
 
   // Toggle Pin Clinical Note
   const handleTogglePinClinicalNote = (patientId: string, noteId: string) => {
+    if (currentUser?.role === 'ADMIN') return;
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -430,6 +455,10 @@ export const App: React.FC = () => {
 
   // Admit New Patient
   const handleAddPatient = (newPatient: Patient) => {
+    if (currentUser?.role === 'ADMIN') {
+      console.warn('ADMIN is restricted from admitting new patients.');
+      return;
+    }
     setPatients((prev) => [newPatient, ...prev]);
     setSelectedPatient(newPatient);
     setActiveView('profile');
@@ -437,6 +466,7 @@ export const App: React.FC = () => {
 
   // Update Primary Diagnosis
   const handleUpdatePrimaryDiagnosis = (patientId: string, newDiagnosis: string) => {
+    if (currentUser?.role === 'ADMIN') return;
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -536,6 +566,8 @@ export const App: React.FC = () => {
           {activeView === 'profile' && selectedPatient && (
             <PatientProfile
               patient={patients.find((p) => p.patientId === selectedPatient.patientId) || selectedPatient}
+              currentUser={currentUser}
+              isReadOnly={currentUser?.role === 'ADMIN'}
               onBack={() => setActiveView('dashboard')}
               onOpenAddRoundNote={handleOpenAddRoundNote}
               onOpenCapture={handleOpenCapture}
@@ -599,6 +631,7 @@ export const App: React.FC = () => {
                 handleLoginSuccess(doc);
                 setActiveView('dashboard');
               }}
+              onSelectPatient={handleSelectPatient}
             />
           )}
 
@@ -606,6 +639,9 @@ export const App: React.FC = () => {
             <SettingsView
               currentUser={currentUser}
               onLogout={handleLogout}
+              onUpdateUser={(updated) => {
+                setCurrentUser(updated);
+              }}
             />
           )}
         </main>

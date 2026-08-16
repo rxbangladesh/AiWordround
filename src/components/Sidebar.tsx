@@ -171,8 +171,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {currentUser ? (
             <div className="bg-slate-800/90 rounded-xl p-2.5 border border-slate-700/80 space-y-2">
               <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0 relative`}>
-                  {currentUser.name.charAt(0)}
+                <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0 relative overflow-hidden`}>
+                  {currentUser.avatarUrl ? (
+                    <img 
+                      src={currentUser.avatarUrl} 
+                      alt={currentUser.name} 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span>{currentUser.name.charAt(0)}</span>
+                  )}
                   <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-slate-900" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -314,8 +323,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="bg-slate-800/90 rounded-2xl p-3 border border-slate-700/80 shadow-md space-y-2.5">
                   {/* Doctor Profile Header */}
                   <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-black text-sm flex items-center justify-center shadow-md shrink-0 relative`}>
-                      {currentUser.name.charAt(0)}
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-black text-sm flex items-center justify-center shadow-md shrink-0 relative overflow-hidden`}>
+                      {currentUser.avatarUrl ? (
+                        <img 
+                          src={currentUser.avatarUrl} 
+                          alt={currentUser.name} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span>{currentUser.name.charAt(0)}</span>
+                      )}
                       <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-slate-900" />
                     </div>
                     <div className="min-w-0 flex-1">

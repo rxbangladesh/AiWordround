@@ -26,15 +26,19 @@ import {
   LogOut,
   Archive,
   Share2,
-  Zap
+  Zap,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
-import { Patient, DailyRound, InvestigationResult, Medication, ClinicalNote } from '../types';
+import { Patient, DailyRound, InvestigationResult, Medication, ClinicalNote, UserAccount } from '../types';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { AIDiagnosisSynthesis } from './AIDiagnosisSynthesis';
 import { SharePatientModal } from './SharePatientModal';
 
 interface PatientProfileProps {
   patient: Patient;
+  currentUser?: UserAccount | null;
+  isReadOnly?: boolean;
   onBack: () => void;
   onOpenAddRoundNote: (patient: Patient) => void;
   onOpenCapture: (patient?: Patient) => void;
@@ -55,6 +59,8 @@ interface PatientProfileProps {
 
 export const PatientProfile: React.FC<PatientProfileProps> = ({
   patient,
+  currentUser,
+  isReadOnly = false,
   onBack,
   onOpenAddRoundNote,
   onOpenCapture,
@@ -68,6 +74,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   onFulfillPendingInvestigation,
   onUpdatePrimaryDiagnosis,
 }) => {
+  const isAdmin = currentUser?.role === 'CLINICAL_ADMIN' || isReadOnly;
   const [activeTab, setActiveTab] = React.useState<'overview' | 'history' | 'notes' | 'rounds' | 'trends' | 'meds' | 'docs'>('overview');
   const [selectedLabTest, setSelectedLabTest] = React.useState<string>('Creatinine');
   const [compareRound, setCompareRound] = React.useState<{ current: DailyRound; previous: DailyRound | null } | null>(null);
@@ -93,7 +100,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   
   // New Note Form state
   const [newNoteContent, setNewNoteContent] = React.useState<string>('');
-  const [newNoteAuthor, setNewNoteAuthor] = React.useState<string>('Dr. Sarah Jenkins');
+  const [newNoteAuthor, setNewNoteAuthor] = React.useState<string>(currentUser?.name || 'Dr. Sarah Jenkins');
   const [newNoteCategory, setNewNoteCategory] = React.useState<ClinicalNote['category']>('Observation');
   const [newNoteIsPinned, setNewNoteIsPinned] = React.useState<boolean>(false);
   const [copiedNoteId, setCopiedNoteId] = React.useState<string | null>(null);
@@ -101,6 +108,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   // Handlers for Pending Investigations
   const handleAddPendingInv = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isAdmin) return;
     if (!newPendingInvName.trim()) return;
     if (onAddPendingInvestigation) {
       onAddPendingInvestigation(patient.patientId, newPendingInvName.trim());
@@ -109,6 +117,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   };
 
   const handleOpenFulfillModal = (pendingName: string) => {
+    if (isAdmin) return;
     setTargetPendingItem(pendingName);
     setReportTestName(pendingName);
     setReportResult('');
@@ -145,6 +154,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
 
   const handleSaveFulfilledReport = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isAdmin) return;
     if (!reportTestName.trim() || !reportResult.trim()) return;
 
     const numericVal = parseFloat(reportNumericValue);
@@ -178,11 +188,12 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
 
   const handleAddNote = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isAdmin) return;
     if (!newNoteContent.trim()) return;
 
     const notePayload = {
       content: newNoteContent.trim(),
-      author: newNoteAuthor.trim() || 'Duty Doctor',
+      author: newNoteAuthor.trim() || currentUser?.name || 'Duty Doctor',
       category: newNoteCategory,
       isPinned: newNoteIsPinned,
     };
@@ -203,6 +214,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
   };
 
   const handleDeleteNote = (noteId: string) => {
+    if (isAdmin) return;
     if (onDeleteClinicalNote) {
       onDeleteClinicalNote(patient.patientId, noteId);
     } else {
@@ -287,8 +299,14 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
 
         <div className="grid grid-cols-3 sm:flex items-center gap-2">
           <button
-            onClick={() => onOpenAddRoundNote(patient)}
-            className="flex items-center justify-center gap-1 bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap"
+            onClick={() => !isAdmin && onOpenAddRoundNote(patient)}
+            disabled={isAdmin}
+            title={isAdmin ? 'Admin Read-Only: Ward round assessments require attending doctor credentials' : 'Add Daily Ward Round Note'}
+            className={`flex items-center justify-center gap-1 font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-all whitespace-nowrap ${
+              isAdmin
+                ? 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300'
+                : 'bg-teal-600 hover:bg-teal-700 text-white shadow-xs cursor-pointer'
+            }`}
           >
             <Plus className="w-4 h-4 shrink-0" />
             <span>Round Note</span>
@@ -297,6 +315,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
           <button
             onClick={() => onOpenCapture(patient)}
             className="flex items-center justify-center gap-1 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+            title="View or upload document for OCR review"
           >
             <Camera className="w-4 h-4 shrink-0 text-teal-700" />
             <span>Capture Doc</span>
@@ -304,9 +323,14 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
 
           {patient.status !== 'DISCHARGED' ? (
             <button
-              onClick={() => onOpenDischargeModal && onOpenDischargeModal(patient)}
-              className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
-              title="Discharge patient and store complete medical records"
+              onClick={() => !isAdmin && onOpenDischargeModal && onOpenDischargeModal(patient)}
+              disabled={isAdmin}
+              className={`flex items-center justify-center gap-1 font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-colors shadow-2xs whitespace-nowrap ${
+                isAdmin
+                  ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                  : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 cursor-pointer'
+              }`}
+              title={isAdmin ? 'Admin Read-Only: Patient discharge must be authorized by attending physician' : 'Discharge patient and store complete medical records'}
             >
               <LogOut className="w-4 h-4 text-red-600 shrink-0" />
               <span>Discharge</span>
@@ -314,8 +338,14 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
           ) : (
             onReadmitPatient && (
               <button
-                onClick={() => onReadmitPatient(patient.patientId)}
-                className="flex items-center justify-center gap-1 bg-teal-800 hover:bg-teal-900 text-white font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                onClick={() => !isAdmin && onReadmitPatient(patient.patientId)}
+                disabled={isAdmin}
+                title={isAdmin ? 'Admin Read-Only: Re-admission requires medical doctor' : 'Re-Admit Patient'}
+                className={`flex items-center justify-center gap-1 font-bold px-3 py-2.5 min-h-[38px] rounded-xl text-xs transition-all shadow-xs whitespace-nowrap ${
+                  isAdmin
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300'
+                    : 'bg-teal-800 hover:bg-teal-900 text-white cursor-pointer'
+                }`}
               >
                 <Plus className="w-4 h-4 shrink-0" />
                 <span>Re-Admit</span>
@@ -324,6 +354,28 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
           )}
         </div>
       </div>
+
+      {/* ADMIN READ-ONLY GOVERNANCE BANNER */}
+      {isAdmin && (
+        <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white p-4 rounded-2xl border border-teal-500/40 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded-xl shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-white">Hospital Governance & Medical Records Audit Mode</h2>
+                <span className="bg-teal-500/20 text-teal-300 border border-teal-500/40 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                  Read-Only
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Clinical Admin has full visibility to review complete patient history, lab trends, daily rounds, and OCR documents. Record modifications and deletions are locked to preserve clinical data integrity.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* DISCHARGED STORED RECORD BANNER */}
       {patient.status === 'DISCHARGED' && patient.dischargeData && (
@@ -534,6 +586,7 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
             patient={patient}
             onUpdatePrimaryDiagnosis={onUpdatePrimaryDiagnosis}
             onOpenCapture={onOpenCapture}
+            isReadOnly={isAdmin}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -593,22 +646,29 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
               </div>
 
               {/* Add New Pending Investigation Input */}
-              <form onSubmit={handleAddPendingInv} className="flex gap-2">
-                <input
-                  type="text"
-                  value={newPendingInvName}
-                  onChange={(e) => setNewPendingInvName(e.target.value)}
-                  placeholder="Type investigation name manually (e.g. Sputum C&S, Serum Ferritin)..."
-                  className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-amber-600 font-medium"
-                />
-                <button
-                  type="submit"
-                  disabled={!newPendingInvName.trim()}
-                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow-2xs transition-all whitespace-nowrap"
-                >
-                  + Add Pending
-                </button>
-              </form>
+              {!isAdmin ? (
+                <form onSubmit={handleAddPendingInv} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newPendingInvName}
+                    onChange={(e) => setNewPendingInvName(e.target.value)}
+                    placeholder="Type investigation name manually (e.g. Sputum C&S, Serum Ferritin)..."
+                    className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-amber-600 font-medium"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newPendingInvName.trim()}
+                    className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow-2xs transition-all whitespace-nowrap"
+                  >
+                    + Add Pending
+                  </button>
+                </form>
+              ) : (
+                <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>Admin Read-Only: Lab orders and fulfillment are managed by attending doctors and nurses.</span>
+                </div>
+              )}
 
               {/* Pending Investigations List */}
               {patient.pendingInvestigations && patient.pendingInvestigations.length > 0 ? (
@@ -623,33 +683,35 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                         <span className="font-mono font-bold text-slate-900">{inv}</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                        <button
-                          onClick={() => handleOpenFulfillModal(inv)}
-                          className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition-all"
-                          title="Enter Report Manually"
-                        >
-                          <Plus className="w-3 h-3" />
-                          <span>Fill Report</span>
-                        </button>
+                      {!isAdmin && (
+                        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                          <button
+                            onClick={() => handleOpenFulfillModal(inv)}
+                            className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition-all"
+                            title="Enter Report Manually"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Fill Report</span>
+                          </button>
 
-                        <button
-                          onClick={() => onOpenCapture(patient)}
-                          className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
-                          title="Take Photo / Upload for OCR"
-                        >
-                          <Camera className="w-3 h-3 text-teal-300" />
-                          <span>Scan Report</span>
-                        </button>
+                          <button
+                            onClick={() => onOpenCapture(patient)}
+                            className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition-all cursor-pointer"
+                            title="Take Photo / Upload for OCR"
+                          >
+                            <Camera className="w-3 h-3 text-teal-300" />
+                            <span>Scan Report</span>
+                          </button>
 
-                        <button
-                          onClick={() => onRemovePendingInvestigation && onRemovePendingInvestigation(patient.patientId, inv)}
-                          className="text-slate-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors"
-                          title="Remove from pending list"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                          <button
+                            onClick={() => onRemovePendingInvestigation && onRemovePendingInvestigation(patient.patientId, inv)}
+                            className="text-slate-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors"
+                            title="Remove from pending list"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -768,78 +830,90 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
             </div>
 
             {/* Quick Add Note Form */}
-            <form onSubmit={handleAddNote} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                    <MessageSquare className="w-4 h-4 text-teal-600" />
-                    <span>Jot Down New Observation</span>
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  {/* Category Selection */}
-                  <span className="text-slate-500 font-medium">Category:</span>
-                  {(['Observation', 'Handover', 'Family Update', 'Nursing Note', 'General'] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setNewNoteCategory(cat)}
-                      className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] border transition-all ${
-                        newNoteCategory === cat
-                          ? 'bg-teal-700 text-white border-teal-700 shadow-2xs'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <textarea
-                value={newNoteContent}
-                onChange={(e) => setNewNoteContent(e.target.value)}
-                placeholder="Type doctor observation, informal handover note, family conversation notes, or bedside findings..."
-                className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-teal-600 min-h-[90px] shadow-2xs"
-                rows={3}
-              />
-
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <div className="flex items-center gap-4 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500 font-medium">Author:</span>
-                    <input
-                      type="text"
-                      value={newNoteAuthor}
-                      onChange={(e) => setNewNoteAuthor(e.target.value)}
-                      placeholder="Doctor Name"
-                      className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-600"
-                    />
+            {!isAdmin ? (
+              <form onSubmit={handleAddNote} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                      <MessageSquare className="w-4 h-4 text-teal-600" />
+                      <span>Jot Down New Observation</span>
+                    </span>
                   </div>
 
-                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-semibold select-none">
-                    <input
-                      type="checkbox"
-                      checked={newNoteIsPinned}
-                      onChange={(e) => setNewNoteIsPinned(e.target.checked)}
-                      className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <Pin className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Pin to Top</span>
-                  </label>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {/* Category Selection */}
+                    <span className="text-slate-500 font-medium">Category:</span>
+                    {(['Observation', 'Handover', 'Family Update', 'Nursing Note', 'General'] as const).map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setNewNoteCategory(cat)}
+                        className={`px-2.5 py-1 rounded-lg font-semibold text-[11px] border transition-all ${
+                          newNoteCategory === cat
+                            ? 'bg-teal-700 text-white border-teal-700 shadow-2xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={!newNoteContent.trim()}
-                  className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-xs transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Save Clinical Note</span>
-                </button>
+                <textarea
+                  value={newNoteContent}
+                  onChange={(e) => setNewNoteContent(e.target.value)}
+                  placeholder="Type doctor observation, informal handover note, family conversation notes, or bedside findings..."
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-teal-600 min-h-[90px] shadow-2xs"
+                  rows={3}
+                />
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                  <div className="flex items-center gap-4 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-500 font-medium">Author:</span>
+                      <input
+                        type="text"
+                        value={newNoteAuthor}
+                        onChange={(e) => setNewNoteAuthor(e.target.value)}
+                        placeholder="Doctor Name"
+                        className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-600"
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-semibold select-none">
+                      <input
+                        type="checkbox"
+                        checked={newNoteIsPinned}
+                        onChange={(e) => setNewNoteIsPinned(e.target.checked)}
+                        className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                      />
+                      <Pin className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Pin to Top</span>
+                    </label>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!newNoteContent.trim()}
+                    className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-xs transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Save Clinical Note</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs text-slate-600">
+                <div className="flex items-center gap-2.5">
+                  <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span>Clinical note creation and deletion are restricted to attending medical staff. Admins have read-only access.</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                  Audit View
+                </span>
               </div>
-            </form>
+            )}
 
             {/* Search & Filter Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
@@ -919,17 +993,19 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                           👤 {note.author}
                         </span>
 
-                        <button
-                          onClick={() => handleTogglePin(note.id)}
-                          title={note.isPinned ? 'Unpin note' : 'Pin note'}
-                          className={`p-1.5 rounded-lg border transition-colors ${
-                            note.isPinned
-                              ? 'bg-amber-100 border-amber-300 text-amber-800'
-                              : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-amber-600 hover:bg-slate-100'
-                          }`}
-                        >
-                          <Pin className="w-3.5 h-3.5" />
-                        </button>
+                        {!isAdmin && (
+                          <button
+                            onClick={() => handleTogglePin(note.id)}
+                            title={note.isPinned ? 'Unpin note' : 'Pin note'}
+                            className={`p-1.5 rounded-lg border transition-colors ${
+                              note.isPinned
+                                ? 'bg-amber-100 border-amber-300 text-amber-800'
+                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-amber-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            <Pin className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
                         <button
                           onClick={() => handleCopyNoteText(note)}
@@ -939,13 +1015,15 @@ export const PatientProfile: React.FC<PatientProfileProps> = ({
                           {copiedNoteId === note.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
 
-                        <button
-                          onClick={() => handleDeleteNote(note.id)}
-                          title="Delete note"
-                          className="p-1.5 rounded-lg border bg-slate-50 border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!isAdmin && (
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            title="Delete note"
+                            className="p-1.5 rounded-lg border bg-slate-50 border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 

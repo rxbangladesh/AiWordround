@@ -52,8 +52,17 @@ export const ScreenLockModal: React.FC<ScreenLockModalProps> = ({
         {/* User Identity Header */}
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
-            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-tr ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} flex items-center justify-center text-white font-black text-2xl shadow-lg`}>
-              {currentUser.name.charAt(0)}
+            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-tr ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} flex items-center justify-center text-white font-black text-2xl shadow-lg overflow-hidden`}>
+              {currentUser.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.name}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span>{currentUser.name.charAt(0)}</span>
+              )}
             </div>
             <div className="absolute -bottom-1 -right-1 p-1.5 bg-amber-500 text-slate-950 rounded-full">
               <Lock className="w-3.5 h-3.5" />

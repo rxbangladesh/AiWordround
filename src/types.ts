@@ -190,6 +190,7 @@ export interface UserAccount {
   licenseNumber?: string;
   pin?: string; // 4-digit quick lock PIN
   avatarColor?: string;
+  avatarUrl?: string; // Doctor profile/avatar image URL or base64 data URI
   approvalStatus: ApprovalStatus;
   registeredAt?: string;
   approvedAt?: string;

@@ -248,15 +248,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors text-left group cursor-pointer"
                 title="Current Doctor Profile & Session"
               >
-                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold text-xs flex items-center justify-center shadow-2xs`}>
-                  {currentUser.name.charAt(0)}
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold text-xs flex items-center justify-center shadow-2xs overflow-hidden shrink-0`}>
+                  {currentUser.avatarUrl ? (
+                    <img 
+                      src={currentUser.avatarUrl} 
+                      alt={currentUser.name} 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span>{currentUser.name.charAt(0)}</span>
+                  )}
                 </div>
                 <div className="hidden xl:block max-w-[120px]">
                   <div className="text-xs font-bold text-slate-900 truncate leading-tight">
                     {currentUser.name.split(',')[0]}
                   </div>
                   <div className="text-[10px] text-teal-700 font-semibold truncate leading-none">
-                    {currentUser.role === 'ATTENDING_PHYSICIAN' ? 'Consultant' : currentUser.role === 'RESIDENT_DOCTOR' ? 'Resident' : 'Nurse'}
+                    {currentUser.role === 'ATTENDING_PHYSICIAN' ? 'Consultant' : currentUser.role === 'RESIDENT_DOCTOR' ? 'Resident' : currentUser.role === 'CLINICAL_ADMIN' ? 'Admin' : 'Nurse'}
                   </div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform" />
@@ -267,8 +276,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2 space-y-2 divide-y divide-slate-100 animate-in fade-in zoom-in-95 duration-100">
                   <div className="p-2 space-y-1">
                     <div className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold text-sm flex items-center justify-center shadow-xs shrink-0`}>
-                        {currentUser.name.charAt(0)}
+                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${currentUser.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold text-sm flex items-center justify-center shadow-xs shrink-0 overflow-hidden`}>
+                        {currentUser.avatarUrl ? (
+                          <img 
+                            src={currentUser.avatarUrl} 
+                            alt={currentUser.name} 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span>{currentUser.name.charAt(0)}</span>
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="font-bold text-xs text-slate-900 truncate">{currentUser.name}</div>

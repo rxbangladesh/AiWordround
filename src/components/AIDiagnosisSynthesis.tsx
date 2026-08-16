@@ -22,6 +22,7 @@ interface AIDiagnosisSynthesisProps {
   patient: Patient;
   onUpdatePrimaryDiagnosis?: (patientId: string, newDiagnosis: string) => void;
   onOpenCapture?: () => void;
+  isReadOnly?: boolean;
 }
 
 interface DifferentialItem {
@@ -64,6 +65,7 @@ export const AIDiagnosisSynthesis: React.FC<AIDiagnosisSynthesisProps> = ({
   patient,
   onUpdatePrimaryDiagnosis,
   onOpenCapture,
+  isReadOnly = false,
 }) => {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [data, setData] = React.useState<SynthesisResult | null>(null);
@@ -121,6 +123,7 @@ export const AIDiagnosisSynthesis: React.FC<AIDiagnosisSynthesisProps> = ({
   }, [patient.patientId]);
 
   const handleApplyDiagnosis = () => {
+    if (isReadOnly) return;
     if (data?.suggestedDiagnosisName && onUpdatePrimaryDiagnosis) {
       onUpdatePrimaryDiagnosis(patient.patientId, data.suggestedDiagnosisName);
       setApplied(true);
@@ -277,15 +280,18 @@ export const AIDiagnosisSynthesis: React.FC<AIDiagnosisSynthesisProps> = ({
 
                   <button
                     onClick={handleApplyDiagnosis}
-                    disabled={applied}
+                    disabled={applied || isReadOnly}
+                    title={isReadOnly ? 'Admin Read-Only: Diagnostic modification restricted to doctors' : 'Set as patient working diagnosis'}
                     className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-2xs ${
-                      applied
+                      isReadOnly
+                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed opacity-80'
+                        : applied
                         ? 'bg-emerald-700 text-white'
                         : 'bg-teal-700 hover:bg-teal-800 text-white'
                     }`}
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>{applied ? 'Updated in Record!' : 'Set as Patient Diagnosis'}</span>
+                    <span>{isReadOnly ? 'Diagnosis Locked (Admin Read-Only)' : applied ? 'Updated in Record!' : 'Set as Patient Diagnosis'}</span>
                   </button>
                 </div>
               </div>

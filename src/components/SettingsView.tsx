@@ -10,31 +10,138 @@ import {
   AlertCircle, 
   Users, 
   LogOut,
-  Save
+  Save,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  Sparkles,
+  RefreshCw,
+  Trash2,
+  Phone,
+  Building2,
+  Stethoscope,
+  Award
 } from 'lucide-react';
 import { UserAccount } from '../types';
-import { getStoredUsers, updatePassword, updatePin } from '../utils/auth';
+import { getStoredUsers, updatePassword, updatePin, updateUserProfile } from '../utils/auth';
+import { PRESET_AVATARS, AVATAR_COLOR_THEMES } from '../utils/avatars';
 
 interface SettingsViewProps {
   currentUser?: UserAccount | null;
   onLogout?: () => void;
+  onUpdateUser?: (updatedUser: UserAccount) => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
   onLogout,
+  onUpdateUser,
 }) => {
+  // Profile state
+  const [name, setName] = React.useState(currentUser?.name || '');
+  const [department, setDepartment] = React.useState(currentUser?.department || '');
+  const [specialty, setSpecialty] = React.useState(currentUser?.specialty || '');
+  const [licenseNumber, setLicenseNumber] = React.useState(currentUser?.licenseNumber || '');
+  const [hospitalName, setHospitalName] = React.useState(currentUser?.hospitalName || '');
+  const [phone, setPhone] = React.useState(currentUser?.phone || '');
+  const [avatarUrl, setAvatarUrl] = React.useState<string | undefined>(currentUser?.avatarUrl);
+  const [avatarColor, setAvatarColor] = React.useState<string>(currentUser?.avatarColor || 'from-teal-600 to-emerald-600');
+  
+  const [profileSuccess, setProfileSuccess] = React.useState(false);
+  const [profileError, setProfileError] = React.useState<string | null>(null);
+  const [showPresetPicker, setShowPresetPicker] = React.useState(false);
+
+  // Sync state if currentUser changes
+  React.useEffect(() => {
+    if (currentUser) {
+      setName(currentUser.name);
+      setDepartment(currentUser.department);
+      setSpecialty(currentUser.specialty || '');
+      setLicenseNumber(currentUser.licenseNumber || '');
+      setHospitalName(currentUser.hospitalName || '');
+      setPhone(currentUser.phone || '');
+      setAvatarUrl(currentUser.avatarUrl);
+      setAvatarColor(currentUser.avatarColor || 'from-teal-600 to-emerald-600');
+    }
+  }, [currentUser]);
+
+  // Password state
   const [oldPassword, setOldPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [passSuccess, setPassSuccess] = React.useState(false);
   const [passError, setPassError] = React.useState<string | null>(null);
 
+  // PIN state
   const [newPin, setNewPin] = React.useState(currentUser?.pin || '1234');
   const [pinSuccess, setPinSuccess] = React.useState(false);
   const [pinError, setPinError] = React.useState<string | null>(null);
 
-  const allUsers = React.useMemo(() => getStoredUsers(), [passSuccess, pinSuccess]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const allUsers = React.useMemo(() => getStoredUsers(), [passSuccess, pinSuccess, profileSuccess]);
+
+  // Handle Photo Upload (file to data URL)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setProfileError('Please select a valid image file (JPEG, PNG, WebP).');
+      return;
+    }
+
+    // Max 4MB
+    if (file.size > 4 * 1024 * 1024) {
+      setProfileError('Image size should be less than 4MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setAvatarUrl(result);
+      setProfileError(null);
+    };
+    reader.onerror = () => {
+      setProfileError('Failed to read image file.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle Save Profile
+  const handleProfileSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileSuccess(false);
+
+    if (!currentUser) return;
+    if (!name.trim()) {
+      setProfileError('Doctor name cannot be empty.');
+      return;
+    }
+
+    const result = updateUserProfile(currentUser.id, {
+      name: name.trim(),
+      department: department.trim() || 'Internal Medicine',
+      specialty: specialty.trim() || department.trim(),
+      licenseNumber: licenseNumber.trim(),
+      hospitalName: hospitalName.trim(),
+      phone: phone.trim(),
+      avatarUrl: avatarUrl || undefined,
+      avatarColor,
+    });
+
+    if (result.success && result.user) {
+      setProfileSuccess(true);
+      if (onUpdateUser) {
+        onUpdateUser(result.user);
+      }
+      setTimeout(() => setProfileSuccess(false), 4000);
+    } else {
+      setProfileError(result.error || 'Failed to update profile details.');
+    }
+  };
 
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,10 +200,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-              Clinical Settings & Security
+              Doctor Profile & Clinical Settings
             </h2>
             <p className="text-xs text-slate-300">
-              Account credentials, password management, PIN configuration, and AI engine status.
+              Customize your doctor profile, avatar pictures, credentials, PIN security, and AI system preferences.
             </p>
           </div>
         </div>
@@ -112,57 +219,278 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
       </div>
 
-      {/* Doctor & Ward Profile */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+      {/* Main Doctor Profile & Avatar Customizer Form */}
+      <form onSubmit={handleProfileSubmit} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 flex-wrap gap-2">
+          <div className="flex items-center gap-2 font-bold text-slate-900 text-base">
             <UserCheck className="w-5 h-5 text-teal-600" />
-            <span>Logged-In Doctor Profile</span>
+            <span>Doctor Profile & Avatar Management</span>
           </div>
-          <span className="text-[10px] px-2 py-0.5 bg-teal-50 text-teal-700 font-bold uppercase rounded-md border border-teal-200">
-            {currentUser?.roleTitle || 'Verified Staff'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] px-2.5 py-1 bg-teal-50 text-teal-800 font-bold uppercase rounded-lg border border-teal-200">
+              {currentUser?.roleTitle || 'Verified Staff'}
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+        {/* Feedback Alerts */}
+        {profileError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+            <span>{profileError}</span>
+          </div>
+        )}
+
+        {profileSuccess && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-semibold">Profile and avatar updated successfully! Changes are applied across the entire EMR system.</span>
+          </div>
+        )}
+
+        {/* Avatar Selection & Preview Section */}
+        <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Camera className="w-4 h-4 text-teal-600" />
+              <span>Profile Picture & Avatar</span>
+            </div>
+            <span className="text-[11px] text-slate-500">
+              Visible on bedside rounds, patient charts, order logs, and top navigation.
+            </span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+            {/* Live Avatar Preview Container */}
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className={`relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br ${avatarColor} text-white font-black text-3xl flex items-center justify-center shadow-md overflow-hidden border-2 border-white ring-2 ring-slate-200`}>
+                {avatarUrl ? (
+                  <img 
+                    src={avatarUrl} 
+                    alt={name || 'Doctor'} 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span>{name ? name.charAt(0) : 'D'}</span>
+                )}
+                <span className="absolute bottom-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+              </div>
+              <span className="text-[11px] font-semibold text-slate-600">
+                {avatarUrl ? 'Photo Avatar' : 'Initial Badge'}
+              </span>
+            </div>
+
+            {/* Avatar Action Controls */}
+            <div className="flex-1 space-y-3 w-full">
+              <div className="flex flex-wrap gap-2">
+                {/* Upload File Input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Picture</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPresetPicker(!showPresetPicker)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Choose Preset Avatar</span>
+                </button>
+
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl(undefined)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                    title="Remove picture and use initials badge"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remove Photo</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Color Theme Selector for Avatar Background */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-bold text-slate-600 block">Avatar Gradient & Badge Theme:</label>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {AVATAR_COLOR_THEMES.map((theme) => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => setAvatarColor(theme.bgClass)}
+                      className={`w-7 h-7 rounded-xl bg-gradient-to-br ${theme.bgClass} shadow-2xs transition-transform cursor-pointer relative ${
+                        avatarColor === theme.bgClass ? 'ring-2 ring-teal-600 ring-offset-2 scale-110' : 'hover:scale-105'
+                      }`}
+                      title={theme.label}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Preset Avatars Gallery Drawer/Grid */}
+          {showPresetPicker && (
+            <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3 animate-in fade-in zoom-in-95 duration-150 mt-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Select Curated Medical Staff Avatar:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowPresetPicker(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 font-medium cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3">
+                {PRESET_AVATARS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      setAvatarUrl(preset.url);
+                      setShowPresetPicker(false);
+                    }}
+                    className={`group flex flex-col items-center gap-1 p-1.5 rounded-xl border transition-all cursor-pointer ${
+                      avatarUrl === preset.url
+                        ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-500/30'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <img
+                      src={preset.url}
+                      alt={preset.name}
+                      referrerPolicy="no-referrer"
+                      className="w-12 h-12 rounded-lg object-cover shadow-2xs group-hover:scale-105 transition-transform"
+                    />
+                    <span className="text-[10px] text-slate-600 font-medium truncate w-full text-center">
+                      {preset.name.split('(')[0]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Doctor Information Form Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="text-slate-600 block mb-1 font-semibold">Doctor Name:</label>
+            <label className="text-slate-700 block mb-1 font-bold flex items-center gap-1.5">
+              <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
+              <span>Doctor Full Name & Titles:</span>
+            </label>
             <input
               type="text"
-              readOnly
-              value={currentUser?.name || 'Dr. Alex Rivera, MD'}
-              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3 py-2 font-bold"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Dr. Alex Rivera, MD, FACP"
+              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3.5 py-2.5 font-bold focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
             />
           </div>
+
           <div>
-            <label className="text-slate-600 block mb-1 font-semibold">Email & Hospital Username:</label>
+            <label className="text-slate-700 block mb-1 font-bold flex items-center gap-1.5">
+              <Award className="w-3.5 h-3.5 text-teal-600" />
+              <span>Hospital Username / Email (Read-Only):</span>
+            </label>
             <input
               type="text"
               readOnly
-              value={currentUser?.email || 'alex.rivera@hospital.org'}
-              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3 py-2 font-mono font-medium"
+              value={currentUser?.email || 'doctor@hospital.org'}
+              className="w-full bg-slate-100 text-slate-700 border border-slate-200 rounded-xl px-3.5 py-2.5 font-mono font-medium cursor-not-allowed"
             />
           </div>
+
           <div>
-            <label className="text-slate-600 block mb-1 font-semibold">Ward & Department:</label>
+            <label className="text-slate-700 block mb-1 font-bold flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-teal-600" />
+              <span>Ward & Clinical Department:</span>
+            </label>
             <input
               type="text"
-              readOnly
-              value={currentUser?.department || 'Internal Medicine & Nephrology'}
-              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3 py-2 font-medium"
+              required
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              placeholder="e.g. Internal Medicine & Nephrology"
+              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
             />
           </div>
+
           <div>
-            <label className="text-slate-600 block mb-1 font-semibold">Medical License ID:</label>
+            <label className="text-slate-700 block mb-1 font-bold flex items-center gap-1.5">
+              <Stethoscope className="w-3.5 h-3.5 text-teal-600" />
+              <span>Sub-Specialty / Clinical Focus:</span>
+            </label>
             <input
               type="text"
-              readOnly
-              value={currentUser?.licenseNumber || 'MD-88294'}
-              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3 py-2 font-mono font-bold"
+              value={specialty}
+              onChange={(e) => setSpecialty(e.target.value)}
+              placeholder="e.g. Acute Dialysis, Hypertension & Glomerulonephritis"
+              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-700 block mb-1 font-bold flex items-center gap-1.5">
+              <Award className="w-3.5 h-3.5 text-teal-600" />
+              <span>Medical License ID / Registry Number:</span>
+            </label>
+            <input
+              type="text"
+              value={licenseNumber}
+              onChange={(e) => setLicenseNumber(e.target.value)}
+              placeholder="e.g. MD-88294"
+              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono font-bold focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-700 block mb-1 font-bold flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5 text-teal-600" />
+              <span>Hospital Beeper / Contact Phone:</span>
+            </label>
+            <input
+              type="text"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. Ext. 4021 / +1 (555) 019-2834"
+              className="w-full bg-slate-50 text-slate-900 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:border-teal-500 focus:bg-white transition-colors"
             />
           </div>
         </div>
-      </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end pt-2">
+          <button
+            type="submit"
+            className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-95"
+          >
+            <Save className="w-4 h-4" />
+            <span>Save Profile & Avatar Changes</span>
+          </button>
+        </div>
+      </form>
 
       {/* Password & PIN Security Controls */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -302,8 +630,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   : 'bg-slate-50 border-slate-200 text-slate-800'
               }`}
             >
-              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${u.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold text-xs flex items-center justify-center shrink-0`}>
-                {u.name.charAt(0)}
+              <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${u.avatarColor || 'from-teal-600 to-emerald-600'} text-white font-bold text-xs flex items-center justify-center shrink-0 overflow-hidden shadow-2xs`}>
+                {u.avatarUrl ? (
+                  <img 
+                    src={u.avatarUrl} 
+                    alt={u.name} 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span>{u.name.charAt(0)}</span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-bold truncate">{u.name}</div>

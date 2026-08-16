@@ -18,6 +18,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     licenseNumber: 'MD-ADMIN-001',
     pin: '9999',
     avatarColor: 'from-slate-700 to-slate-900',
+    avatarUrl: 'https://images.unsplash.com/photo-1584467735871-8e85353a8413?w=200&auto=format&fit=crop&q=80',
     approvalStatus: 'APPROVED',
     registeredAt: '2026-01-01 08:00',
     approvedAt: '2026-01-01 08:00',
@@ -37,6 +38,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     licenseNumber: 'MD-88294',
     pin: '1234',
     avatarColor: 'from-teal-600 to-emerald-600',
+    avatarUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80',
     approvalStatus: 'APPROVED',
     registeredAt: '2026-03-15 09:30',
     approvedAt: '2026-03-15 11:00',
@@ -56,6 +58,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     licenseNumber: 'MD-94012',
     pin: '1234',
     avatarColor: 'from-blue-600 to-indigo-600',
+    avatarUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80',
     approvalStatus: 'APPROVED',
     registeredAt: '2026-05-10 14:00',
     approvedAt: '2026-05-10 16:30',
@@ -75,6 +78,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     licenseNumber: 'RN-55102',
     pin: '1234',
     avatarColor: 'from-amber-600 to-orange-600',
+    avatarUrl: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=200&auto=format&fit=crop&q=80',
     approvalStatus: 'APPROVED',
     registeredAt: '2026-04-01 07:45',
     approvedAt: '2026-04-01 09:15',
@@ -94,6 +98,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     licenseNumber: 'MD-77182',
     pin: '1234',
     avatarColor: 'from-rose-600 to-red-600',
+    avatarUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80',
     approvalStatus: 'PENDING',
     registeredAt: '2026-08-13 14:30',
     assignedWard: 'Ward 1B - Respiratory/Cardiac',
@@ -413,4 +418,28 @@ export function updatePin(userId: string, newPin: string): { success: boolean; e
   saveStoredCurrentUser(users[index]);
   return { success: true };
 }
+
+export function updateUserProfile(
+  userId: string, 
+  updates: Partial<Pick<UserAccount, 'name' | 'department' | 'specialty' | 'licenseNumber' | 'phone' | 'hospitalName' | 'avatarUrl' | 'avatarColor' | 'roleTitle'>>
+): { success: boolean; user?: UserAccount; error?: string } {
+  const users = getStoredUsers();
+  const index = users.findIndex((u) => u.id === userId);
+  if (index === -1) return { success: false, error: 'Doctor account not found' };
+
+  users[index] = {
+    ...users[index],
+    ...updates,
+  };
+
+  saveStoredUsers(users);
+  
+  const currentUser = getStoredCurrentUser();
+  if (currentUser && currentUser.id === userId) {
+    saveStoredCurrentUser(users[index]);
+  }
+
+  return { success: true, user: users[index] };
+}
+
 
