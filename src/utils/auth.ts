@@ -135,9 +135,21 @@ export function getStoredUsers(): UserAccount[] {
 export function saveStoredUsers(users: UserAccount[]): void {
   try {
     localStorage.setItem(AUTH_STORAGE_USERS_KEY, JSON.stringify(users));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('hospital_users_updated', { detail: users }));
+    }
   } catch (err) {
     console.warn('Failed to save users to localStorage:', err);
   }
+}
+
+export function getPendingDoctors(): UserAccount[] {
+  const users = getStoredUsers();
+  return users.filter((u) => u.approvalStatus === 'PENDING');
+}
+
+export function getPendingDoctorsCount(): number {
+  return getPendingDoctors().length;
 }
 
 export function getStoredCurrentUser(): UserAccount | null {

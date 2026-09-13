@@ -62,6 +62,26 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
     setUsers(getStoredUsers());
   };
 
+  React.useEffect(() => {
+    refreshUsers();
+
+    const handleUpdate = () => {
+      refreshUsers();
+    };
+
+    window.addEventListener('hospital_users_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    
+    // 2-second interval polling fallback to guarantee new doctor registrations appear immediately
+    const interval = setInterval(refreshUsers, 2000);
+
+    return () => {
+      window.removeEventListener('hospital_users_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      clearInterval(interval);
+    };
+  }, []);
+
   const showNotification = (msg: string) => {
     setActionSuccessMessage(msg);
     setTimeout(() => setActionSuccessMessage(null), 4000);

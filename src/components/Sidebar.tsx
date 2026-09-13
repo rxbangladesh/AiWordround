@@ -21,6 +21,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { UserAccount, Patient } from '../types';
+import { getPendingDoctorsCount } from '../utils/auth';
 
 export type NavTab = 
   | 'dashboard'
@@ -77,6 +78,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectPatient,
 }) => {
   const currentTab = activeTab || activeView || 'dashboard';
+  const [pendingApprovalsCount, setPendingApprovalsCount] = React.useState<number>(() => getPendingDoctorsCount());
+
+  const isAdmin = currentUser?.role === 'CLINICAL_ADMIN' || currentUser?.role === ('ADMIN' as any) || currentUser?.email === 'admin@hospital.org';
+
+  React.useEffect(() => {
+    const refreshCount = () => {
+      setPendingApprovalsCount(getPendingDoctorsCount());
+    };
+    refreshCount();
+    window.addEventListener('hospital_users_updated', refreshCount);
+    window.addEventListener('storage', refreshCount);
+    const interval = setInterval(refreshCount, 2000);
+
+    return () => {
+      window.removeEventListener('hospital_users_updated', refreshCount);
+      window.removeEventListener('storage', refreshCount);
+      clearInterval(interval);
+    };
+  }, []);
 
   const activeInpatients = React.useMemo(() => {
     return patients.filter((p) => p.status !== 'DISCHARGED');
@@ -125,7 +145,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'capture', label: 'Capture / OCR Review', icon: Camera },
     { id: 'dailyround', label: 'Daily Round Note', icon: FileCheck2 },
     { id: 'tasks', label: 'Today\'s Tasks', icon: CheckSquare, badge: pendingTasksCount > 0 ? pendingTasksCount : undefined, badgeColor: 'bg-teal-600 text-white' },
-    ...(currentUser?.role === 'CLINICAL_ADMIN' ? [{ id: 'admin' as NavTab, label: 'Admin & Approvals', icon: UserCheck, badge: 'Admin', badgeColor: 'bg-indigo-600 text-white' }] : []),
+    ...(isAdmin ? [{ 
+      id: 'admin' as NavTab, 
+      label: 'Admin & Approvals', 
+      icon: UserCheck, 
+      badge: pendingApprovalsCount > 0 ? `${pendingApprovalsCount} Pending` : 'Admin', 
+      badgeColor: pendingApprovalsCount > 0 ? 'bg-amber-500 text-slate-950 font-black animate-pulse' : 'bg-indigo-600 text-white' 
+    }] : []),
     { id: 'settings', label: 'Settings & AI', icon: Settings },
   ];
 

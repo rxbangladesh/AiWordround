@@ -94,10 +94,6 @@ export const App: React.FC = () => {
 
   // Handle Patient Discharge
   const handleConfirmDischarge = (patientId: string, dischargeData: DischargeData) => {
-    if (currentUser?.role === 'ADMIN') {
-      console.warn('ADMIN is restricted from discharging patients.');
-      return;
-    }
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -105,7 +101,7 @@ export const App: React.FC = () => {
             id: `cn-${Date.now()}`,
             date: `${dischargeData.dischargeDate} ${dischargeData.dischargedAt}`,
             content: `DISCHARGE SUMMARY: Patient discharged in ${dischargeData.conditionOnDischarge} condition. Summary: ${dischargeData.dischargeSummary}. Follow-up: ${dischargeData.followUpInstructions || 'None'}`,
-            author: dischargeData.dischargedBy,
+            author: dischargeData.dischargedBy || currentUser?.name || 'Duty Medical Officer',
             category: 'DISCHARGE' as const,
             isPinned: true,
           };
@@ -133,10 +129,6 @@ export const App: React.FC = () => {
 
   // Handle Patient Re-Admission
   const handleReadmitPatient = (patientId: string) => {
-    if (currentUser?.role === 'ADMIN') {
-      console.warn('ADMIN is restricted from re-admitting patients.');
-      return;
-    }
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -165,7 +157,6 @@ export const App: React.FC = () => {
   };
 
   const handleOpenAddRoundNote = (patient: Patient) => {
-    if (currentUser?.role === 'ADMIN') return;
     setDailyRoundModalPatient(patient);
   };
 
@@ -179,10 +170,6 @@ export const App: React.FC = () => {
 
   // Add Daily Round Note
   const handleSaveRound = (patientId: string, roundNote: Omit<DailyRound, 'id'>) => {
-    if (currentUser?.role === 'ADMIN') {
-      console.warn('ADMIN is restricted from saving round notes.');
-      return;
-    }
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -215,10 +202,6 @@ export const App: React.FC = () => {
     extractedInvestigations: InvestigationResult[],
     fulfilledPendingItems: string[] = []
   ) => {
-    if (currentUser?.role === 'ADMIN') {
-      console.warn('ADMIN is restricted from attaching OCR extraction data.');
-      return;
-    }
     setPatients((prev) =>
       prev.map((p) => {
         if (p.patientId === patientId) {
@@ -504,6 +487,7 @@ export const App: React.FC = () => {
           onLockSession={() => setIsSessionLocked(true)}
           onLogout={handleLogout}
           onOpenSettings={() => setActiveView('settings')}
+          onOpenAdmin={() => setActiveView('admin')}
           mobileMenuOpen={mobileMenuOpen}
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
@@ -542,6 +526,7 @@ export const App: React.FC = () => {
               onOpenCapture={handleOpenCapture}
               onOpenAddRoundNote={handleOpenAddRoundNote}
               onOpenDischargeList={() => setActiveView('discharged')}
+              onNavigateToAdmin={() => setActiveView('admin')}
             />
           )}
 
@@ -567,7 +552,7 @@ export const App: React.FC = () => {
             <PatientProfile
               patient={patients.find((p) => p.patientId === selectedPatient.patientId) || selectedPatient}
               currentUser={currentUser}
-              isReadOnly={currentUser?.role === 'ADMIN'}
+              isReadOnly={false}
               onBack={() => setActiveView('dashboard')}
               onOpenAddRoundNote={handleOpenAddRoundNote}
               onOpenCapture={handleOpenCapture}
@@ -580,6 +565,7 @@ export const App: React.FC = () => {
               onRemovePendingInvestigation={handleRemovePendingInvestigation}
               onFulfillPendingInvestigation={handleFulfillPendingInvestigation}
               onUpdatePrimaryDiagnosis={handleUpdatePrimaryDiagnosis}
+              onSaveExtractedData={handleSaveExtractedData}
             />
           )}
 

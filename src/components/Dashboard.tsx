@@ -9,14 +9,19 @@ import {
   Plus, 
   Camera, 
   Stethoscope, 
-  Users,
-  Search,
-  BedDouble,
-  BellRing,
-  ClipboardList,
-  Sparkles
+  Users, 
+  Search, 
+  BedDouble, 
+  BellRing, 
+  ClipboardList, 
+  Sparkles,
+  UserCheck,
+  ShieldAlert,
+  ArrowRight,
+  ShieldCheck
 } from 'lucide-react';
 import { Patient, PriorityLevel, UserAccount } from '../types';
+import { getPendingDoctors, approveDoctor } from '../utils/auth';
 
 export type DashboardFilter = PriorityLevel | 'ALL' | 'PENDING_ACTION';
 
@@ -31,6 +36,7 @@ interface DashboardProps {
   onOpenDischargeList?: () => void;
   onFilterPriority?: (priority: PriorityLevel | 'ALL') => void;
   selectedPriorityFilter?: PriorityLevel | 'ALL';
+  onNavigateToAdmin?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -44,10 +50,42 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenDischargeList,
   onFilterPriority,
   selectedPriorityFilter,
+  onNavigateToAdmin,
 }) => {
   const [internalFilter, setInternalFilter] = React.useState<DashboardFilter>('ALL');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [rosterScope, setRosterScope] = React.useState<'MY_PATIENTS' | 'ALL_WARD'>('ALL_WARD');
+  const [pendingDoctors, setPendingDoctors] = React.useState<UserAccount[]>(() => getPendingDoctors());
+  const [approvalToast, setApprovalToast] = React.useState<string | null>(null);
+
+  const isAdmin = currentUser?.role === 'CLINICAL_ADMIN' || currentUser?.role === ('ADMIN' as any) || currentUser?.email === 'admin@hospital.org';
+
+  // Listen for registration updates in real-time
+  React.useEffect(() => {
+    const refreshPending = () => {
+      setPendingDoctors(getPendingDoctors());
+    };
+    
+    refreshPending();
+    window.addEventListener('hospital_users_updated', refreshPending);
+    window.addEventListener('storage', refreshPending);
+    const interval = setInterval(refreshPending, 2000);
+
+    return () => {
+      window.removeEventListener('hospital_users_updated', refreshPending);
+      window.removeEventListener('storage', refreshPending);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleQuickApproveDoctor = (doc: UserAccount) => {
+    const res = approveDoctor(doc.id, currentUser?.name || 'Dr. William Bradley, MD (Clinical Admin)');
+    if (res.success) {
+      setPendingDoctors(getPendingDoctors());
+      setApprovalToast(`✓ Approved ${doc.name} (${doc.roleTitle}). Doctor has full access now.`);
+      setTimeout(() => setApprovalToast(null), 4000);
+    }
+  };
 
   const activeFilter: DashboardFilter = (selectedPriorityFilter as DashboardFilter) ?? internalFilter;
 
@@ -133,6 +171,78 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="p-3 sm:p-5 lg:p-6 space-y-5 max-w-[1600px] mx-auto text-slate-900">
       
+      {/* Toast confirmation */}
+      {approvalToast && (
+        <div className="bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-lg flex items-center justify-between text-xs font-bold animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{approvalToast}</span>
+          </div>
+          <button onClick={() => setApprovalToast(null)} className="text-white hover:text-emerald-100 font-bold cursor-pointer">✕</button>
+        </div>
+      )}
+
+      {/* ADMIN REAL-TIME REGISTRATION APPROVALS BANNER */}
+      {isAdmin && pendingDoctors.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-600 to-amber-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg border border-amber-400/50 space-y-3 animate-in fade-in slide-in-from-top-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/20 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+                <UserCheck className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-white text-orange-700 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-2xs">
+                    {pendingDoctors.length} New {pendingDoctors.length === 1 ? 'Registration' : 'Registrations'}
+                  </span>
+                  <span className="text-xs font-bold text-amber-100">Verification Required</span>
+                </div>
+                <h3 className="font-extrabold text-base text-white mt-0.5">
+                  Doctor Registration Approvals Queue
+                </h3>
+              </div>
+            </div>
+
+            {onNavigateToAdmin && (
+              <button
+                onClick={onNavigateToAdmin}
+                className="bg-slate-950 hover:bg-slate-900 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+              >
+                <span>Open Admin Approvals Console</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {pendingDoctors.map((doc) => (
+              <div key={doc.id} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-3 flex flex-col justify-between gap-2">
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-bold text-sm text-white truncate">{doc.name}</span>
+                    <span className="text-[10px] font-mono bg-white/20 px-1.5 py-0.5 rounded text-amber-100 shrink-0">
+                      {doc.licenseNumber || 'License TBD'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-100 font-medium mt-0.5">{doc.roleTitle}</p>
+                  <p className="text-[11px] text-amber-200 truncate">{doc.department} • {doc.email}</p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+                  <button
+                    onClick={() => handleQuickApproveDoctor(doc)}
+                    className="flex-1 bg-white hover:bg-emerald-50 text-emerald-800 font-extrabold text-xs py-1.5 px-3 rounded-lg transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Approve Doctor</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 1. Condition & Status Command Bar (Quick Filters) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         {/* ALL PATIENTS */}

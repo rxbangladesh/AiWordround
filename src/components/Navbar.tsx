@@ -16,9 +16,11 @@ import {
   ChevronDown,
   ShieldCheck,
   Menu,
-  X
+  X,
+  UserCheck
 } from 'lucide-react';
 import { Patient, UserAccount } from '../types';
+import { getPendingDoctorsCount } from '../utils/auth';
 
 interface NavbarProps {
   searchTerm?: string;
@@ -34,6 +36,7 @@ interface NavbarProps {
   onLockSession?: () => void;
   onLogout?: () => void;
   onOpenSettings?: () => void;
+  onOpenAdmin?: () => void;
   mobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
 }
@@ -52,12 +55,32 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLockSession,
   onLogout,
   onOpenSettings,
+  onOpenAdmin,
   mobileMenuOpen = false,
   onToggleMobileMenu,
 }) => {
   const [showSearchResults, setShowSearchResults] = React.useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = React.useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = React.useState(false);
+  const [pendingDoctorsCount, setPendingDoctorsCount] = React.useState<number>(() => getPendingDoctorsCount());
+
+  const isAdmin = currentUser?.role === 'CLINICAL_ADMIN' || currentUser?.role === ('ADMIN' as any) || currentUser?.email === 'admin@hospital.org';
+
+  React.useEffect(() => {
+    const refreshCount = () => {
+      setPendingDoctorsCount(getPendingDoctorsCount());
+    };
+    refreshCount();
+    window.addEventListener('hospital_users_updated', refreshCount);
+    window.addEventListener('storage', refreshCount);
+    const interval = setInterval(refreshCount, 2000);
+
+    return () => {
+      window.removeEventListener('hospital_users_updated', refreshCount);
+      window.removeEventListener('storage', refreshCount);
+      clearInterval(interval);
+    };
+  }, []);
 
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -230,6 +253,27 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden sm:inline">Capture</span>
           </button>
 
+          {/* Admin Approvals Direct Alert Button */}
+          {isAdmin && (
+            <button
+              onClick={onOpenAdmin}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2 min-h-[36px] sm:min-h-[40px] rounded-xl font-bold text-xs transition-all shrink-0 cursor-pointer ${
+                pendingDoctorsCount > 0
+                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md ring-2 ring-amber-400/50 animate-pulse'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+              }`}
+              title="Doctor Registration & Access Approvals Queue"
+            >
+              <UserCheck className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Approvals</span>
+              {pendingDoctorsCount > 0 && (
+                <span className="bg-slate-950 text-amber-300 px-1.5 py-0.2 rounded-full text-[10px] font-black">
+                  {pendingDoctorsCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Add Patient Button */}
           <button
             onClick={onOpenNewPatient}
@@ -299,12 +343,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
 
                   <div className="pt-1.5 space-y-1 text-xs">
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          onOpenAdmin?.();
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100/80 transition-colors font-bold text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Admin & Approvals Console</span>
+                        </div>
+                        {pendingDoctorsCount > 0 && (
+                          <span className="bg-amber-500 text-slate-950 font-extrabold text-[10px] px-2 py-0.5 rounded-full">
+                            {pendingDoctorsCount} New
+                          </span>
+                        )}
+                      </button>
+                    )}
+
                     <button
                       onClick={() => {
                         setUserDropdownOpen(false);
                         onLockSession?.();
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-slate-700 hover:bg-amber-50 hover:text-amber-800 transition-colors font-medium text-left"
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-slate-700 hover:bg-amber-50 hover:text-amber-800 transition-colors font-medium text-left cursor-pointer"
                     >
                       <Lock className="w-3.5 h-3.5 text-amber-600" />
                       <span>Lock Bedside Screen (PIN)</span>
