@@ -17,10 +17,11 @@ import {
   ShieldCheck,
   Menu,
   X,
-  UserCheck
+  UserCheck,
+  Clock
 } from 'lucide-react';
 import { Patient, UserAccount } from '../types';
-import { getPendingDoctorsCount } from '../utils/auth';
+import { getPendingDoctorsCount, getSessionTimeRemaining } from '../utils/auth';
 
 interface NavbarProps {
   searchTerm?: string;
@@ -340,6 +341,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="text-[10px] text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-100 mt-1 truncate">
                       {currentUser.department} • {currentUser.licenseNumber || 'Verified ID'}
                     </div>
+
+                    {/* 1-Day Clinical Session Indicator */}
+                    {(() => {
+                      const rem = getSessionTimeRemaining();
+                      return (
+                        <div className="mt-2 p-2 bg-teal-50/80 border border-teal-200/80 rounded-xl flex items-center justify-between text-[10px]">
+                          <div className="flex items-center gap-1.5 text-teal-800 font-semibold">
+                            <Clock className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                            <span>1-Day Active Session</span>
+                          </div>
+                          <span className="font-mono text-teal-700 bg-teal-100/90 px-1.5 py-0.5 rounded font-bold">
+                            {rem ? `${rem.hours}h ${rem.minutes}m left` : '24h limit'}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="pt-1.5 space-y-1 text-xs">

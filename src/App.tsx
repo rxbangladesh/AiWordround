@@ -19,7 +19,7 @@ import { PatientListView } from './components/PatientListView';
 import { LoginScreen } from './components/LoginScreen';
 import { ScreenLockModal } from './components/ScreenLockModal';
 import { AdminConsole } from './components/AdminConsole';
-import { getStoredCurrentUser, saveStoredCurrentUser, DEFAULT_USERS } from './utils/auth';
+import { getStoredCurrentUser, saveStoredCurrentUser } from './utils/auth';
 
 const LOCAL_STORAGE_KEY = 'ward_round_patients_v3';
 
@@ -37,11 +37,35 @@ const sanitizePatient = (p: any): Patient => ({
 });
 
 export const App: React.FC = () => {
-  // Authentication & Session State
+  // Authentication & Session State (1-Day Duration)
   const [currentUser, setCurrentUser] = React.useState<UserAccount | null>(() => {
-    return getStoredCurrentUser() || DEFAULT_USERS[0];
+    // Show login page first unless an active 1-day session exists
+    return getStoredCurrentUser();
   });
   const [isSessionLocked, setIsSessionLocked] = React.useState(false);
+
+  // Monitor 1-day session validity and automatically expire if older than 24 hours
+  React.useEffect(() => {
+    if (!currentUser) return;
+
+    const checkSessionStatus = () => {
+      const activeUser = getStoredCurrentUser();
+      if (!activeUser) {
+        console.warn('Clinical session expired (24-hour limit). Returning to login screen.');
+        setCurrentUser(null);
+        setIsSessionLocked(false);
+      }
+    };
+
+    // Check periodically every 30 seconds and when the window gains focus
+    const interval = setInterval(checkSessionStatus, 30000);
+    window.addEventListener('focus', checkSessionStatus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkSessionStatus);
+    };
+  }, [currentUser]);
 
   const [patients, setPatients] = React.useState<Patient[]>(() => {
     try {

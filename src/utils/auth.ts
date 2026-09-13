@@ -152,32 +152,83 @@ export function getPendingDoctorsCount(): number {
   return getPendingDoctors().length;
 }
 
+export const ONE_DAY_MS = 24 * 60 * 60 * 1000; // 1 Day in milliseconds (24 Hours)
+export const SESSION_DURATION_MS = ONE_DAY_MS;
+
+export interface StoredSession {
+  user: UserAccount;
+  loggedInAt: number;
+  expiresAt: number;
+}
+
 export function getStoredCurrentUser(): UserAccount | null {
   try {
     const saved = localStorage.getItem(AUTH_STORAGE_CURRENT_USER_KEY);
-    if (saved) {
-      const user: UserAccount = JSON.parse(saved);
+    if (!saved) return null;
+
+    const parsed = JSON.parse(saved);
+    if (!parsed) return null;
+
+    // Check if stored in StoredSession format with 1-day expiration:
+    if (parsed.user && typeof parsed.expiresAt === 'number') {
+      const now = Date.now();
+      if (now > parsed.expiresAt) {
+        console.warn('Clinical session expired (exceeded 1-day limit). Clearing stored session.');
+        localStorage.removeItem(AUTH_STORAGE_CURRENT_USER_KEY);
+        return null;
+      }
       return {
-        ...user,
-        approvalStatus: user.approvalStatus || 'APPROVED',
+        ...parsed.user,
+        approvalStatus: parsed.user.approvalStatus || 'APPROVED',
       };
     }
+
+    // Legacy unexpired format without explicit 1-day timestamp:
+    // Clear it so that when someone visits the app, the login page is shown first!
+    localStorage.removeItem(AUTH_STORAGE_CURRENT_USER_KEY);
+    return null;
   } catch (err) {
     console.warn('Failed to load current user from localStorage:', err);
+    return null;
   }
-  return null;
 }
 
-export function saveStoredCurrentUser(user: UserAccount | null): void {
+export function saveStoredCurrentUser(
+  user: UserAccount | null, 
+  durationMs: number = SESSION_DURATION_MS
+): void {
   try {
     if (user) {
-      localStorage.setItem(AUTH_STORAGE_CURRENT_USER_KEY, JSON.stringify(user));
+      const now = Date.now();
+      const sessionData: StoredSession = {
+        user,
+        loggedInAt: now,
+        expiresAt: now + durationMs, // Exactly 1 Day (24 Hours)
+      };
+      localStorage.setItem(AUTH_STORAGE_CURRENT_USER_KEY, JSON.stringify(sessionData));
     } else {
       localStorage.removeItem(AUTH_STORAGE_CURRENT_USER_KEY);
     }
   } catch (err) {
     console.warn('Failed to save current user to localStorage:', err);
   }
+}
+
+export function getSessionTimeRemaining(): { remainingMs: number; hours: number; minutes: number } | null {
+  try {
+    const saved = localStorage.getItem(AUTH_STORAGE_CURRENT_USER_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (parsed && typeof parsed.expiresAt === 'number') {
+      const remainingMs = Math.max(0, parsed.expiresAt - Date.now());
+      const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+      const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+      return { remainingMs, hours, minutes };
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export function authenticateUser(

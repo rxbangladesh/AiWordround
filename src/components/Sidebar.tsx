@@ -18,7 +18,8 @@ import {
   User,
   KeyRound,
   ShieldAlert,
-  UserCheck
+  UserCheck,
+  Clock
 } from 'lucide-react';
 import { UserAccount, Patient } from '../types';
 import { getPendingDoctorsCount } from '../utils/auth';
@@ -217,6 +218,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="text-[10px] text-teal-400 font-medium truncate">
                     {currentUser.roleTitle || 'Clinical Physician'}
                   </div>
+                  <div className="text-[9px] text-teal-300/80 font-mono flex items-center gap-1 mt-0.5">
+                    <Clock className="w-2.5 h-2.5 text-teal-400 shrink-0" />
+                    <span>1-Day Active Session</span>
+                  </div>
                 </div>
               </div>
 
@@ -371,6 +376,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                       <div className="text-[10px] text-slate-400 truncate mt-0.5">
                         {currentUser.department} • <span className="font-mono text-slate-300">{currentUser.licenseNumber || 'Verified ID'}</span>
+                      </div>
+                      <div className="text-[10px] text-teal-300/90 font-mono flex items-center gap-1 mt-1">
+                        <Clock className="w-3 h-3 text-teal-400 shrink-0" />
+                        <span>1-Day Active Session</span>
                       </div>
                     </div>
                   </div>
