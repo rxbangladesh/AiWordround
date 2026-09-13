@@ -20,6 +20,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { ScreenLockModal } from './components/ScreenLockModal';
 import { AdminConsole } from './components/AdminConsole';
 import { getStoredCurrentUser, saveStoredCurrentUser } from './utils/auth';
+import { matchPatientWard, matchPatientCategory } from './data/wardCategories';
 
 const LOCAL_STORAGE_KEY = 'ward_round_patients_v3';
 
@@ -86,6 +87,23 @@ export const App: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = React.useState<Patient | null>(patients[0] || null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedWard, setSelectedWard] = React.useState('ALL');
+  const [selectedCategory, setSelectedCategory] = React.useState('ALL');
+
+  const handleResetFilters = () => {
+    setSelectedWard('ALL');
+    setSelectedCategory('ALL');
+  };
+
+  // Filtered patients for active views and ward round
+  const filteredPatients = React.useMemo(() => {
+    return patients.filter((p) => {
+      return matchPatientWard(p.ward, selectedWard) && matchPatientCategory(p, selectedCategory);
+    });
+  }, [patients, selectedWard, selectedCategory]);
+
+  const activeFilteredInpatients = React.useMemo(() => {
+    return filteredPatients.filter((p) => p.status !== 'DISCHARGED');
+  }, [filteredPatients]);
 
   // Overlays
   const [roundModeOpen, setRoundModeOpen] = React.useState(false);
@@ -502,7 +520,12 @@ export const App: React.FC = () => {
           onSearchChange={setSearchTerm}
           selectedWard={selectedWard}
           onWardChange={setSelectedWard}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          onResetFilters={handleResetFilters}
           patients={patients}
+          totalPatientsCount={patients.filter((p) => p.status !== 'DISCHARGED').length}
+          filteredPatientsCount={activeFilteredInpatients.length}
           onSelectPatient={handleSelectPatient}
           onOpenNewPatient={() => setNewPatientModalOpen(true)}
           onOpenRoundMode={() => setRoundModeOpen(true)}
@@ -522,10 +545,10 @@ export const App: React.FC = () => {
         <Sidebar
           activeView={activeView}
           onViewChange={(v) => setActiveView(v as any)}
-          patientsCount={patients.filter((p) => p.status !== 'DISCHARGED').length}
+          patientsCount={activeFilteredInpatients.length}
           dischargedCount={patients.filter((p) => p.status === 'DISCHARGED').length}
-          criticalCount={patients.filter((p) => p.status !== 'DISCHARGED' && p.priority === 'CRITICAL').length}
-          pendingTasksCount={patients.filter((p) => p.status !== 'DISCHARGED').reduce((acc, p) => acc + (p.tasks ? p.tasks.filter((t) => t.status === 'PENDING').length : 0), 0)}
+          criticalCount={activeFilteredInpatients.filter((p) => p.priority === 'CRITICAL').length}
+          pendingTasksCount={activeFilteredInpatients.reduce((acc, p) => acc + (p.tasks ? p.tasks.filter((t) => t.status === 'PENDING').length : 0), 0)}
           onOpenRoundMode={() => setRoundModeOpen(true)}
           mobileMenuOpen={mobileMenuOpen}
           onCloseMobileMenu={() => setMobileMenuOpen(false)}
@@ -533,7 +556,7 @@ export const App: React.FC = () => {
           onLockSession={() => setIsSessionLocked(true)}
           onLogout={handleLogout}
           onOpenSettings={() => setActiveView('settings')}
-          patients={patients}
+          patients={activeFilteredInpatients}
           selectedPatientId={selectedPatient?.patientId}
           onSelectPatient={handleSelectPatient}
         />
@@ -543,7 +566,13 @@ export const App: React.FC = () => {
           {activeView === 'dashboard' && (
             <Dashboard
               currentUser={currentUser}
-              patients={patients}
+              patients={filteredPatients}
+              allPatientsCount={patients.filter((p) => p.status !== 'DISCHARGED').length}
+              selectedWard={selectedWard}
+              onWardChange={setSelectedWard}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+              onResetFilters={handleResetFilters}
               onSelectPatient={handleSelectPatient}
               onOpenPreRoundBrief={() => setActiveView('brief')}
               onOpenRoundMode={() => setRoundModeOpen(true)}
@@ -556,7 +585,7 @@ export const App: React.FC = () => {
 
           {activeView === 'patients' && (
             <PatientListView
-              patients={patients}
+              patients={filteredPatients}
               onSelectPatient={handleSelectPatient}
               onOpenAddRoundNote={handleOpenAddRoundNote}
               onOpenCapture={handleOpenCapture}
@@ -566,7 +595,7 @@ export const App: React.FC = () => {
 
           {activeView === 'brief' && (
             <PreRoundBrief
-              patients={patients}
+              patients={filteredPatients}
               onSelectPatient={handleSelectPatient}
               onOpenRoundMode={() => setRoundModeOpen(true)}
             />
@@ -669,7 +698,7 @@ export const App: React.FC = () => {
       {/* OVERLAYS & MODALS */}
       {roundModeOpen && (
         <RoundMode
-          patients={patients}
+          patients={filteredPatients}
           onClose={() => setRoundModeOpen(false)}
           onOpenAddRoundNote={handleOpenAddRoundNote}
           onOpenCapture={handleOpenCapture}

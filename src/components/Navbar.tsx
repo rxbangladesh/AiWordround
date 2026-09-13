@@ -18,21 +18,30 @@ import {
   Menu,
   X,
   UserCheck,
-  Clock
+  Clock,
+  Building2,
+  Tag,
+  Filter
 } from 'lucide-react';
 import { Patient, UserAccount } from '../types';
 import { getPendingDoctorsCount, getSessionTimeRemaining } from '../utils/auth';
+import { WARD_OPTIONS, CATEGORY_OPTIONS } from '../data/wardCategories';
 
 interface NavbarProps {
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
   patients?: Patient[];
+  totalPatientsCount?: number;
+  filteredPatientsCount?: number;
   onSelectPatient?: (patient: Patient) => void;
   onOpenRoundMode?: () => void;
   onOpenCapture?: () => void;
   onOpenNewPatient?: () => void;
   selectedWard?: string;
   onWardChange?: (ward: string) => void;
+  selectedCategory?: string;
+  onCategoryChange?: (category: string) => void;
+  onResetFilters?: () => void;
   currentUser?: UserAccount | null;
   onLockSession?: () => void;
   onLogout?: () => void;
@@ -46,12 +55,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   searchTerm = '',
   onSearchChange,
   patients = [],
+  totalPatientsCount,
+  filteredPatientsCount,
   onSelectPatient,
   onOpenRoundMode,
   onOpenCapture,
   onOpenNewPatient,
   selectedWard = 'ALL',
   onWardChange,
+  selectedCategory = 'ALL',
+  onCategoryChange,
+  onResetFilters,
   currentUser,
   onLockSession,
   onLogout,
@@ -143,21 +157,70 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              <span className="hidden xs:inline">{todayStr}</span>
-              <span className="hidden xs:inline">•</span>
-              <select
-                value={selectedWard}
-                onChange={(e) => onWardChange?.(e.target.value)}
-                className="bg-slate-100 text-slate-700 border border-slate-200 rounded px-1 py-0.5 text-[11px] sm:text-xs font-medium focus:outline-none focus:border-teal-600 max-w-[120px] sm:max-w-none truncate"
-              >
-                <option value="ALL">All Wards / Units</option>
-                <option value="Ward 3B - Nephrology/Internal Med">Ward 3B (Nephro/IM)</option>
-                <option value="Ward 2A - Gastroenterology">Ward 2A (Gastro)</option>
-                <option value="Ward 1B - Respiratory Med">Ward 1B (Respiratory)</option>
-                <option value="Ward 1A - Surgical Ward">Ward 1A (Surgical)</option>
-              </select>
+              <span className="hidden sm:inline">{todayStr}</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="inline-flex items-center gap-1 font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/80 text-[11px]">
+                <Building2 className="w-3 h-3 text-teal-600" />
+                <span className="truncate max-w-[100px] sm:max-w-none">
+                  {selectedWard === 'ALL' ? 'All Wards' : selectedWard}
+                </span>
+                {selectedCategory !== 'ALL' && (
+                  <span className="text-slate-500 font-normal">({selectedCategory})</span>
+                )}
+              </span>
             </div>
           </div>
+        </div>
+
+        {/* Desktop Ward & Clinical Category Direct Selectors */}
+        <div className="hidden lg:flex items-center gap-2 shrink-0">
+          {/* Ward Select */}
+          <div className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/70 border border-slate-200 rounded-xl px-2.5 py-1.5 transition-colors">
+            <Building2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <span className="text-[11px] font-semibold text-slate-500">Ward:</span>
+            <select
+              value={selectedWard}
+              onChange={(e) => onWardChange?.(e.target.value)}
+              className="bg-transparent text-slate-900 font-bold text-xs focus:outline-none cursor-pointer"
+              aria-label="Filter by Ward"
+            >
+              {WARD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category Select */}
+          <div className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/70 border border-slate-200 rounded-xl px-2.5 py-1.5 transition-colors">
+            <Tag className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <span className="text-[11px] font-semibold text-slate-500">Category:</span>
+            <select
+              value={selectedCategory}
+              onChange={(e) => onCategoryChange?.(e.target.value)}
+              className="bg-transparent text-slate-900 font-bold text-xs focus:outline-none cursor-pointer"
+              aria-label="Filter by Clinical Category"
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Reset Filters */}
+          {(selectedWard !== 'ALL' || selectedCategory !== 'ALL') && (
+            <button
+              onClick={onResetFilters}
+              className="flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-xl transition-all cursor-pointer shadow-2xs"
+              title="Reset Filters"
+            >
+              <X className="w-3 h-3" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
 
         {/* Fast Patient Search Bar (Desktop) */}
@@ -478,6 +541,57 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
       )}
+
+      {/* Mobile & Tablet Ward & Category Filter Strip */}
+      <div className="lg:hidden bg-slate-50 border-t border-slate-200/90 px-3 py-2 flex items-center justify-between gap-2 overflow-x-auto shadow-2xs">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {/* Mobile Ward Selector */}
+          <div className="flex-1 min-w-[130px] flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1.5 shadow-2xs">
+            <Building2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <select
+              value={selectedWard}
+              onChange={(e) => onWardChange?.(e.target.value)}
+              className="w-full bg-transparent text-slate-800 font-bold text-xs focus:outline-none cursor-pointer truncate"
+              aria-label="Mobile filter ward"
+            >
+              {WARD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Mobile Category Selector */}
+          <div className="flex-1 min-w-[130px] flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1.5 shadow-2xs">
+            <Tag className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <select
+              value={selectedCategory}
+              onChange={(e) => onCategoryChange?.(e.target.value)}
+              className="w-full bg-transparent text-slate-800 font-bold text-xs focus:outline-none cursor-pointer truncate"
+              aria-label="Mobile filter category"
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Mobile Reset */}
+        {(selectedWard !== 'ALL' || selectedCategory !== 'ALL') && (
+          <button
+            onClick={onResetFilters}
+            className="shrink-0 flex items-center gap-1 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-1.5 rounded-xl shadow-2xs active:scale-95 transition-all cursor-pointer"
+            title="Reset Filters"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Reset</span>
+          </button>
+        )}
+      </div>
     </header>
   );
 };

@@ -167,49 +167,26 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-teal-500 selection:text-white font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-3 selection:bg-teal-500 selection:text-white font-sans relative overflow-y-auto">
       {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(13,148,136,0.18),rgba(255,255,255,0))] pointer-events-none" />
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-teal-500/40 to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(13,148,136,0.15),rgba(255,255,255,0))] pointer-events-none" />
 
-      {/* Top Hospital Header - Clean, Simple, Smooth */}
-      <header className="px-4 py-4 sm:px-8 sm:py-6 max-w-[1600px] mx-auto w-full flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-teal-600/20 border border-teal-500/30 flex items-center justify-center text-teal-400 shadow-sm shrink-0">
-            <Stethoscope className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="font-bold tracking-tight text-base sm:text-lg text-white">
-              AI Ward Round
-            </h1>
-            <p className="text-xs text-slate-400 font-normal">
-              Inpatient & Decision Support System
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="hidden sm:inline font-medium text-slate-300">Clinical System Online</span>
-        </div>
-      </header>
-
-      {/* Main Authentication Container */}
-      <main className="flex-1 flex items-center justify-center px-3 py-4 sm:p-6 relative z-10 w-full">
+      {/* Unified Authentication Card */}
+      <div className="w-full max-w-sm sm:max-w-md my-auto relative z-10">
         
         {/* VIEW A: Awaiting Approval Modal/Banner (Shown when a pending doctor registers or attempts login) */}
         {(pendingAccount || registrationDoneUser) ? (
-          <div className="w-full max-w-lg bg-slate-900/95 backdrop-blur-xl border border-amber-500/40 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl space-y-4 sm:space-y-6 animate-in fade-in zoom-in-95">
-            <div className="text-center space-y-2 sm:space-y-3">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-950/40">
-                <Clock className="w-6 h-6 sm:w-7 sm:h-7 animate-pulse" />
+          <div className="w-full bg-slate-900/95 backdrop-blur-xl border border-amber-500/40 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-lg shadow-amber-950/40">
+                <Clock className="w-6 h-6 animate-pulse" />
               </div>
 
               <div>
-                <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-amber-400 bg-amber-950/80 px-2.5 py-1 rounded-full border border-amber-800/80 inline-block mb-1.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400 bg-amber-950/80 px-2.5 py-1 rounded-full border border-amber-800/80 inline-block mb-1.5">
                   Verification In Progress
                 </span>
-                <h2 className="text-lg sm:text-xl font-black text-white">
+                <h2 className="text-lg font-black text-white">
                   Registration Submitted & Pending Admin Approval
                 </h2>
                 <p className="text-xs text-slate-300 mt-1 max-w-sm mx-auto">
@@ -219,22 +196,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
 
             {/* Application Ticket Details */}
-            <div className="bg-slate-950/80 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 border border-slate-800 space-y-2 text-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <div className="bg-slate-950/80 rounded-xl p-3 border border-slate-800 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
                 <span className="text-slate-400">Doctor Name:</span>
                 <span className="font-bold text-white">{(pendingAccount || registrationDoneUser)?.name}</span>
               </div>
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
                 <span className="text-slate-400">Clinical Role:</span>
                 <span className="font-semibold text-teal-300">{(pendingAccount || registrationDoneUser)?.roleTitle}</span>
               </div>
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
                 <span className="text-slate-400">Medical License ID:</span>
                 <span className="font-mono font-bold text-slate-200 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">
                   {(pendingAccount || registrationDoneUser)?.licenseNumber || 'Verified Pending'}
                 </span>
               </div>
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
                 <span className="text-slate-400">Assigned Unit:</span>
                 <span className="text-slate-300">{(pendingAccount || registrationDoneUser)?.department}</span>
               </div>
@@ -251,7 +228,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <div className="space-y-2 pt-1">
               <button
                 onClick={() => handleInstantApproveAndLogin(pendingAccount || registrationDoneUser!)}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold min-h-[44px] py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 text-xs transition-all cursor-pointer"
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold min-h-[42px] py-2 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 text-xs transition-all cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>Instant Approve & Open My Dashboard</span>
@@ -263,7 +240,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   setRegistrationDoneUser(null);
                   setActiveTab('admin');
                 }}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold min-h-[42px] py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all cursor-pointer"
+                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold min-h-[40px] py-2 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all cursor-pointer"
               >
                 <UserCheck className="w-4 h-4 text-teal-400 shrink-0" />
                 <span>Log In as Admin to Review Approvals</span>
@@ -275,7 +252,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   setRegistrationDoneUser(null);
                   setActiveTab('login');
                 }}
-                className="w-full text-slate-400 hover:text-slate-200 font-semibold text-xs py-2 min-h-[38px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="w-full text-slate-400 hover:text-slate-200 font-semibold text-xs py-1.5 min-h-[36px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Sign In Screen</span>
@@ -283,13 +260,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
         ) : (
-          <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl space-y-4 sm:space-y-5">
+          <div className="w-full bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-3.5">
             
+            {/* Integrated Card Header: Smooth, Compact, Clean */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
+                  <Stethoscope className="w-4 h-4" />
+                </div>
+                <div>
+                  <h1 className="font-bold tracking-tight text-sm sm:text-base text-white leading-none">
+                    AI Ward Round
+                  </h1>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 font-normal mt-0.5">
+                    Inpatient & Decision Support System
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 bg-slate-950/60 px-2 py-0.5 rounded-full border border-slate-800 shrink-0">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-medium text-slate-300">Online</span>
+              </div>
+            </div>
+
             {/* Tabs Selector: 1. Sign In 2. Doctor Register 3. Admin Login */}
-            <div className="grid grid-cols-3 gap-1 bg-slate-950/90 p-1 rounded-xl sm:rounded-2xl border border-slate-800/80">
+            <div className="grid grid-cols-3 gap-1 bg-slate-950/90 p-1 rounded-xl border border-slate-800/80">
               <button
                 onClick={() => { setActiveTab('login'); setError(null); }}
-                className={`py-2 px-1 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer font-bold text-[11px] sm:text-xs min-h-[38px] sm:min-h-[40px] ${
+                className={`py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer font-bold text-[11px] sm:text-xs min-h-[36px] ${
                   activeTab === 'login'
                     ? 'bg-teal-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
@@ -300,7 +299,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </button>
               <button
                 onClick={() => { setActiveTab('register'); setError(null); }}
-                className={`py-2 px-1 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer font-bold text-[11px] sm:text-xs min-h-[38px] sm:min-h-[40px] ${
+                className={`py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer font-bold text-[11px] sm:text-xs min-h-[36px] ${
                   activeTab === 'register'
                     ? 'bg-teal-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
@@ -311,7 +310,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </button>
               <button
                 onClick={() => { setActiveTab('admin'); setError(null); }}
-                className={`py-2 px-1 rounded-lg sm:rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer font-bold text-[11px] sm:text-xs min-h-[38px] sm:min-h-[40px] ${
+                className={`py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer font-bold text-[11px] sm:text-xs min-h-[36px] ${
                   activeTab === 'admin'
                     ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-teal-300 border border-teal-500/40 shadow-xs'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
@@ -324,32 +323,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
             {/* TAB 1: DOCTOR SIGN IN WITH IN-SECTION PASSWORD OR PIN TOGGLE */}
             {activeTab === 'login' && (
-              <form onSubmit={handleDoctorLoginSubmit} className="space-y-3.5 sm:space-y-4">
-                <div className="space-y-3">
+              <form onSubmit={handleDoctorLoginSubmit} className="space-y-3">
+                <div className="space-y-2.5">
                   {/* Doctor Identifier */}
                   <div>
                     <label className="block text-[11px] sm:text-xs font-bold text-slate-300 mb-1">
                       Doctor Email or License ID
                     </label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 sm:top-2.5" />
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                       <input
                         type="text"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="doctor@hospital.org or MD-88294"
-                        className="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl py-2.5 pl-10 pr-3 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                        className="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl py-2 pl-9 pr-3 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
                       />
                     </div>
                   </div>
 
                   {/* CREDENTIALS SECTION: TOGGLE BETWEEN PASSWORD OR 4-DIGIT PIN */}
-                  <div className="bg-slate-950/80 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-800 space-y-2.5">
+                  <div className="bg-slate-950/80 p-2.5 sm:p-3 rounded-xl border border-slate-800 space-y-2">
                     {/* Header with Switch Button */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="text-xs font-bold text-slate-200 block truncate">
+                        <span className="text-[11px] sm:text-xs font-bold text-slate-200 block truncate">
                           {loginMethod === 'password' ? 'Password' : 'Quick Bedside PIN'}
                         </span>
                         <span className="text-[10px] text-teal-400/90 font-mono block">
@@ -365,7 +364,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                             setLoginMethod('password');
                             setError(null);
                           }}
-                          className={`px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1 cursor-pointer min-h-[28px] ${
+                          className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer min-h-[26px] ${
                             loginMethod === 'password'
                               ? 'bg-teal-600 text-white shadow-2xs'
                               : 'text-slate-400 hover:text-slate-200'
@@ -380,7 +379,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                             setLoginMethod('pin');
                             setError(null);
                           }}
-                          className={`px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1 cursor-pointer min-h-[28px] ${
+                          className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer min-h-[26px] ${
                             loginMethod === 'pin'
                               ? 'bg-teal-600 text-white shadow-2xs'
                               : 'text-slate-400 hover:text-slate-200'
@@ -395,27 +394,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     {/* Input based on selected method */}
                     {loginMethod === 'password' ? (
                       <div className="relative">
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 sm:top-2.5" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                         <input
                           type={showPassword ? 'text' : 'password'}
                           required
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Enter doctor password"
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2.5 pl-10 pr-10 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors font-mono"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 pl-9 pr-9 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors font-mono"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200 transition-colors p-1 cursor-pointer"
+                          className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-200 transition-colors p-1 cursor-pointer"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <div className="relative">
-                          <KeyRound className="w-4 h-4 text-teal-400 absolute left-3.5 top-3 sm:top-2.5" />
+                          <KeyRound className="w-4 h-4 text-teal-400 absolute left-3 top-2.5" />
                           <input
                             type="password"
                             maxLength={4}
@@ -423,7 +422,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                             value={doctorPin}
                             onChange={(e) => setDoctorPin(e.target.value.replace(/\D/g, ''))}
                             placeholder="4-Digit PIN (e.g. 1234)"
-                            className="w-full bg-slate-900 border border-teal-600/50 rounded-xl py-2.5 pl-10 pr-10 text-sm sm:text-base tracking-widest text-center text-teal-300 placeholder-slate-500 focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-colors font-mono"
+                            className="w-full bg-slate-900 border border-teal-600/50 rounded-xl py-2 pl-9 pr-9 text-sm tracking-widest text-center text-teal-300 placeholder-slate-500 focus:outline-hidden focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition-colors font-mono"
                           />
                         </div>
 
@@ -433,7 +432,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                           <button
                             type="button"
                             onClick={() => setDoctorPin('1234')}
-                            className="text-teal-400 hover:text-teal-300 font-bold cursor-pointer py-1 px-1.5 rounded hover:bg-slate-900 transition-colors"
+                            className="text-teal-400 hover:text-teal-300 font-bold cursor-pointer py-0.5 px-1.5 rounded hover:bg-slate-900 transition-colors"
                           >
                             Fill 1234
                           </button>
@@ -444,27 +443,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 </div>
 
                 {/* Remember me & Need an account */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2 pt-0.5">
-                  <label className="flex items-center gap-2 text-slate-400 hover:text-slate-300 cursor-pointer min-h-[30px]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1.5 pt-0.5">
+                  <label className="flex items-center gap-2 text-slate-400 hover:text-slate-300 cursor-pointer min-h-[26px]">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="rounded bg-slate-950 border-slate-700 text-teal-600 focus:ring-teal-500 w-4 h-4"
+                      className="rounded bg-slate-950 border-slate-700 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5"
                     />
                     <span className="text-[11px] sm:text-xs">Keep active session (1 Day)</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setActiveTab('register')}
-                    className="text-teal-400 hover:text-teal-300 font-semibold cursor-pointer text-left sm:text-right text-[11px] sm:text-xs py-1"
+                    className="text-teal-400 hover:text-teal-300 font-semibold cursor-pointer text-left sm:text-right text-[11px] sm:text-xs py-0.5"
                   >
                     Need an account? Register →
                   </button>
                 </div>
 
                 {error && (
-                  <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+                  <div className="p-2.5 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -473,7 +472,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm shadow-lg shadow-teal-950/40 transition-all cursor-pointer min-h-[44px]"
+                  className="w-full bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm shadow-lg shadow-teal-950/40 transition-all cursor-pointer min-h-[42px]"
                 >
                   <span>{isSubmitting ? 'Authenticating Doctor...' : `Sign In with ${loginMethod === 'password' ? 'Password' : '4-Digit PIN'}`}</span>
                   <ArrowRight className="w-4 h-4 shrink-0" />
@@ -755,11 +754,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             )}
           </div>
         )}
-      </main>
+      </div>
 
-      {/* Footer Info */}
-      <footer className="py-3 px-4 text-center text-[10px] sm:text-xs text-slate-500 relative z-10 border-t border-slate-900 bg-slate-950/80">
-        <p>AI Ward Round Clinical SaaS Platform • Multi-Doctor Verification Active</p>
+      {/* Footer Info - Compact, snug at the bottom */}
+      <footer className="py-2.5 px-4 text-center text-[10px] sm:text-xs text-slate-500 relative z-10 w-full mt-2 sm:mt-4">
+        <p>AI Ward Round Clinical Platform • Role-Based Clinical Access</p>
       </footer>
     </div>
   );
